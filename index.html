@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 22 - Fixed badge calc (display=actual date, badge=-1), Transaction filter, Top pagination -->
+<!-- Version 24 - Auto-refresh every 3 min, refresh on tab focus, manual refresh button -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -150,7 +150,7 @@
 <body>
     <div id="login" class="login-screen"><div class="login-card"><h1>📋 Policy Management</h1><p>Sign in with your Microsoft 365 account</p><button class="login-btn" onclick="signIn()">Sign In with Microsoft</button></div></div>
     <div id="app" class="app">
-        <header class="header"><h1>📋 Policy Management</h1><div class="header-right"><div class="search-box"><input type="text" id="search" placeholder="Search policies..." oninput="filter()"></div><button class="new-btn" onclick="newPolicy()">+ New Policy</button><div class="user-badge" onclick="signOut()"><div class="avatar" id="userAvatar">?</div><span id="userName">User</span></div></div></header>
+        <header class="header"><h1>📋 Policy Management</h1><div class="header-right"><div class="search-box"><input type="text" id="search" placeholder="Search policies..." oninput="filter()"></div><button class="new-btn" onclick="refreshData()" title="Refresh data">🔄</button><button class="new-btn" onclick="newPolicy()">+ New Policy</button><div class="user-badge" onclick="signOut()"><div class="avatar" id="userAvatar">?</div><span id="userName">User</span></div></div></header>
         <main class="main">
             <div class="stats">
                 <div class="stat red" onclick="filterStat('pastDue')"><div class="num" id="sPastDue">0</div><div class="label">Past Due</div></div>
@@ -196,7 +196,7 @@ const STATUSES=['Not Started','In-Progress','Pending – Quote','Pending – Cus
 const BILL_STATUSES=['Not Started','Invoice Sent','Payment Received','Closed'];
 const COLORS={'Not Started':'#6b7280','In-Progress':'#2563eb','Pending – Quote':'#7c3aed','Pending – Customer':'#d97706','Pending – Underwriting':'#db2777','Quote-Received':'#059669','Bound-Direct Bill':'#d97706','Bound':'#16a34a','Bound-New carrier':'#0891b2','Lost':'#dc2626','Replaced':'#6b7280','Invoice Sent':'#d97706','Payment Received':'#16a34a','Closed':'#6b7280'};
 const EXIT=['Bound','Bound-Direct Bill','Bound-New carrier','Lost','Replaced'],PROGRESS=['In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received'],ACOLORS=['#dc2626','#ea580c','#d97706','#16a34a','#0891b2','#2563eb','#7c3aed','#c026d3'];
-const msalConfig={auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:location.origin},cache:{cacheLocation:'sessionStorage'}};
+const msalConfig={auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:location.origin},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}};
 let msal,user,token,currentUserId=null,policies=[],filtered=[],siteUsers=[],tab='myPolicy',selected=null,page=1,PAGE_SIZE=50,statFilter=null;
 const F_ASSIGNED='AssignedTo0LookupId',F_NOTES='NextStep';
 
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded',async()=>{msal=new window.msal.Publ
 async function signIn(){try{const r=await msal.loginPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});user=r.account;token=r.accessToken;showApp()}catch(e){console.error(e);toast('Login failed','err')}}
 async function getToken(){try{const r=await msal.acquireTokenSilent({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All'],account:user});token=r.accessToken}catch(e){const r=await msal.acquireTokenPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});token=r.accessToken}return token}
 function signOut(){msal.logoutPopup()}
-async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];document.getElementById('userAvatar').textContent=init(name);await loadSiteUsers();await loadPolicies()}
+async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];document.getElementById('userAvatar').textContent=init(name);await loadSiteUsers();await loadPolicies();startAutoRefresh()}
 async function graph(url,opts={}){if(!token)await getToken();const r=await fetch(`https://graph.microsoft.com/v1.0${url}`,{...opts,headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}});if(!r.ok){const t=await r.text();console.error('Graph:',r.status,t);throw new Error(t)}return r.json()}
 
 async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/User%20Information%20List/items?$expand=fields&$top=500`);siteUsers=r.value.map(u=>({id:String(u.fields.id),name:u.fields.Title||'',email:u.fields.EMail||''})).filter(u=>u.name);const email=user.username?.toLowerCase();const me=siteUsers.find(u=>u.email?.toLowerCase()===email);if(me)currentUserId=me.id;console.log('Current user:',currentUserId)}catch(e){console.log('Site users error:',e.message)}}
@@ -215,6 +215,54 @@ async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost
 async function loadPolicies(){document.getElementById('gridBody').innerHTML='<div class="loading"><div class="spinner"></div>Loading policies...</div>';try{policies=[];let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;const types=new Set();while(url){const r=await graph(url);r.value.forEach(item=>{const f=item.fields;let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}const pType=f.PolicyType||'';if(pType)types.add(pType);policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:pType,Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName})});url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null}const typeSelect=document.getElementById('fType');[...types].sort().forEach(t=>typeSelect.innerHTML+=`<option value="${t}">${t}</option>`);console.log('Loaded:',policies.length);buildAssigneeFilter();filter();updateStats()}catch(e){console.error('Load:',e);document.getElementById('gridBody').innerHTML='<div class="loading">Error loading policies</div>'}}
 
 function buildAssigneeFilter(){const names=new Map();policies.forEach(p=>{if(p.AssignedId&&p.AssignedName)names.set(p.AssignedId,p.AssignedName)});const sel=document.getElementById('fAssignee');sel.innerHTML='<option value="">All Assignees</option>';[...names.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([id,name])=>sel.innerHTML+=`<option value="${id}">${name}</option>`)}
+
+// Auto-refresh functionality
+let lastRefresh=Date.now();
+let refreshInterval=null;
+const REFRESH_INTERVAL=3*60*1000; // 3 minutes
+const VISIBILITY_THRESHOLD=60*1000; // 1 minute
+
+async function refreshData(silent=false){
+    if(!silent)toast('Refreshing...','');
+    try{
+        const oldPolicies=policies;
+        policies=[];
+        let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;
+        while(url){
+            const r=await graph(url);
+            r.value.forEach(item=>{
+                const f=item.fields;
+                let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;
+                if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}
+                policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:f.PolicyType||'',Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName});
+            });
+            url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null;
+        }
+        lastRefresh=Date.now();
+        buildAssigneeFilter();
+        filter();
+        updateStats();
+        if(!silent)toast('Data refreshed','ok');
+    }catch(e){
+        console.error('Refresh error:',e);
+        if(!silent)toast('Refresh failed','err');
+    }
+}
+
+function startAutoRefresh(){
+    if(refreshInterval)clearInterval(refreshInterval);
+    refreshInterval=setInterval(()=>refreshData(true),REFRESH_INTERVAL);
+}
+
+// Refresh when tab becomes visible after being hidden
+document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){
+        const timeSinceRefresh=Date.now()-lastRefresh;
+        if(timeSinceRefresh>VISIBILITY_THRESHOLD){
+            refreshData(true);
+        }
+    }
+});
 
 // Parse date as local date (avoid timezone issues)
 function parseLocalDate(dateStr){
