@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 18 - New Column Order, Type Badge, Auto-Archive -->
+<!-- Version 19 - Fixed: Type Badge (Renewal/New Business), HTML Escaping (Page 2 fix), Column Spacing (max-width) -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,11 +52,11 @@
         .filters label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;color:#475569;font-weight:500}
         .filters label input{width:18px;height:18px;accent-color:#7c3aed}
         .grid{background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:visible}
-        .grid-header{display:grid;grid-template-columns:minmax(280px,1fr) 105px 130px 160px 95px 120px 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:12px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
-        .grid-header.billing{grid-template-columns:minmax(250px,1fr) 100px 110px 110px 150px 95px 115px 42px}
+        .grid-header{display:grid;grid-template-columns:minmax(280px,450px) 105px 130px 160px 95px 120px 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:12px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
+        .grid-header.billing{grid-template-columns:minmax(250px,400px) 100px 110px 110px 150px 95px 115px 42px}
         #gridBody{display:flex;flex-direction:column}
-        .grid-row{display:grid;grid-template-columns:minmax(280px,1fr) 105px 130px 160px 95px 120px 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:12px}
-        .grid-row.billing{grid-template-columns:minmax(250px,1fr) 100px 110px 110px 150px 95px 115px 42px}
+        .grid-row{display:grid;grid-template-columns:minmax(280px,450px) 105px 130px 160px 95px 120px 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:12px}
+        .grid-row.billing{grid-template-columns:minmax(250px,400px) 100px 110px 110px 150px 95px 115px 42px}
         .grid-row:nth-child(even){background:#f8fafc}
         .grid-row:hover{background:#ede9fe;box-shadow:inset 3px 0 0 #7c3aed}
         .policy-cell{display:flex;gap:12px;align-items:flex-start;min-width:0}
@@ -142,7 +142,7 @@
         .toast.show{display:block}
         .toast.ok{background:#059669}
         .toast.err{background:#dc2626}
-        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(220px,1fr) 95px 120px 145px 85px 110px 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(200px,1fr) 90px 100px 100px 135px 85px 105px 40px}}
+        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(220px,380px) 95px 120px 145px 85px 110px 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(200px,350px) 90px 100px 100px 135px 85px 105px 40px}}
         @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
     </style>
 </head>
@@ -196,6 +196,9 @@ const EXIT=['Bound','Bound-Direct Bill','Bound-New carrier','Lost','Replaced'],P
 const msalConfig={auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:location.origin},cache:{cacheLocation:'sessionStorage'}};
 let msal,user,token,currentUserId=null,policies=[],filtered=[],siteUsers=[],tab='myPolicy',selected=null,page=1,PAGE_SIZE=50,statFilter=null;
 const F_ASSIGNED='AssignedTo0LookupId',F_NOTES='NextStep';
+
+// HTML escape function to prevent template literal breaking
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;')}
 
 document.addEventListener('DOMContentLoaded',async()=>{msal=new window.msal.PublicClientApplication(msalConfig);await msal.initialize();const a=msal.getAllAccounts();if(a.length){user=a[0];await getToken();showApp()}STATUSES.forEach(s=>document.getElementById('fStatus').innerHTML+=`<option value="${s}">${s}</option>`);document.addEventListener('click',e=>{if(!e.target.closest('.status-cell')&&!e.target.closest('.status-dd'))document.querySelectorAll('.status-dd').forEach(d=>d.remove());if(!e.target.closest('.assignee-cell')&&!e.target.closest('.assignee-dd'))document.querySelectorAll('.assignee-dd').forEach(d=>d.remove());if(!e.target.closest('.autocomplete'))document.querySelectorAll('.autocomplete-dd').forEach(d=>d.classList.remove('open'))})});
 async function signIn(){try{const r=await msal.loginPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});user=r.account;token=r.accessToken;showApp()}catch(e){console.error(e);toast('Login failed','err')}}
@@ -391,11 +394,11 @@ function render(){
                 <div class="policy-cell">
                     <div class="policy-icon" style="background:${color}15;color:${color}">${icon}</div>
                     <div class="policy-info">
-                        ${p.PolicyType?`<div class="type-badge" style="background:${typeColor}15;color:${typeColor}">${p.PolicyType}</div>`:''}
-                        <h3>${p.Title}</h3>
-                        <div class="meta">${p.PolicyNumber}${p.BizType?' • '+p.BizType:''}</div>
-                        ${p.Carrier?`<div class="carrier">🏢 ${p.Carrier}</div>`:''}
-                        ${p.Notes?`<div class="notes">📝 ${p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes}</div>`:''}
+                        <div class="type-badge" style="background:${transColor}15;color:${transColor}">${transLabel}</div>
+                        <h3>${esc(p.Title)}</h3>
+                        <div class="meta">${esc(p.PolicyNumber)}${p.PolicyType?' • '+esc(p.PolicyType):''}${p.BizType?' • '+p.BizType:''}</div>
+                        ${p.Carrier?`<div class="carrier">🏢 ${esc(p.Carrier)}</div>`:''}
+                        ${p.Notes?`<div class="notes">📝 ${esc(p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes)}</div>`:''}
                     </div>
                 </div>
                 <div class="due-cell">
@@ -411,7 +414,7 @@ function render(){
                 <div class="assignee-cell">
                     <div class="assignee-badge" style="background:${ac}15;color:${ac}" onclick="event.stopPropagation();toggleAssignee('${p.id}',this)">
                         <div class="init" style="background:${ac}">${init(aName)}</div>
-                        <span class="name">${aName}</span>
+                        <span class="name">${esc(aName)}</span>
                     </div>
                 </div>
                 <div class="date-cell">${effDate?fmtShort(effDate):'-'}</div>
@@ -423,11 +426,11 @@ function render(){
                 <div class="policy-cell">
                     <div class="policy-icon" style="background:${color}15;color:${color}">${icon}</div>
                     <div class="policy-info">
-                        ${p.PolicyType?`<div class="type-badge" style="background:${typeColor}15;color:${typeColor}">${p.PolicyType}</div>`:''}
-                        <h3>${p.Title}</h3>
-                        <div class="meta">${p.PolicyNumber}${p.BizType?' • '+p.BizType:''}</div>
-                        ${p.Carrier?`<div class="carrier">🏢 ${p.Carrier}</div>`:''}
-                        ${p.Notes?`<div class="notes">📝 ${p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes}</div>`:''}
+                        <div class="type-badge" style="background:${transColor}15;color:${transColor}">${transLabel}</div>
+                        <h3>${esc(p.Title)}</h3>
+                        <div class="meta">${esc(p.PolicyNumber)}${p.PolicyType?' • '+esc(p.PolicyType):''}${p.BizType?' • '+p.BizType:''}</div>
+                        ${p.Carrier?`<div class="carrier">🏢 ${esc(p.Carrier)}</div>`:''}
+                        ${p.Notes?`<div class="notes">📝 ${esc(p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes)}</div>`:''}
                     </div>
                 </div>
                 <div class="due-cell">
@@ -440,7 +443,7 @@ function render(){
                 <div class="assignee-cell">
                     <div class="assignee-badge" style="background:${ac}15;color:${ac}" onclick="event.stopPropagation();toggleAssignee('${p.id}',this)">
                         <div class="init" style="background:${ac}">${init(aName)}</div>
-                        <span class="name">${aName}</span>
+                        <span class="name">${esc(aName)}</span>
                     </div>
                 </div>
                 <div class="date-cell">${effDate?fmtShort(effDate):'-'}</div>
