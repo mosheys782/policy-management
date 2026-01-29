@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 20 - Full-width columns, All Business dropdown -->
+<!-- Version 21 - Fixed due date calculation (-1 for policy, 0 for billing), new badge colors -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -72,10 +72,11 @@
         .trans-badge{display:inline-block;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
         .date-cell{font-size:12px;color:#334155;text-align:center;white-space:nowrap;font-weight:500}
         .due-badge{display:inline-block;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;letter-spacing:0.3px;box-shadow:0 2px 4px rgba(0,0,0,0.1);border:none}
-        .due-badge.past{background:#fee2e2;color:#b91c1c;box-shadow:0 2px 6px rgba(248,113,113,0.3);border:none}
-        .due-badge.today{background:#fef3c7;color:#92400e;box-shadow:0 2px 6px rgba(251,191,36,0.3);border:none}
-        .due-badge.soon{background:#dbeafe;color:#1e40af;box-shadow:0 2px 6px rgba(96,165,250,0.3);border:none}
-        .due-badge.future{background:#f1f5f9;color:#475569;box-shadow:0 2px 4px rgba(148,163,184,0.2);border:none}
+        .due-badge.past{background:#fee2e2;color:#b91c1c;box-shadow:0 2px 6px rgba(248,113,113,0.3)}
+        .due-badge.today{background:#fef3c7;color:#92400e;box-shadow:0 2px 6px rgba(251,191,36,0.3)}
+        .due-badge.tomorrow{background:#fed7aa;color:#c2410c;box-shadow:0 2px 6px rgba(251,146,60,0.3)}
+        .due-badge.week{background:#dbeafe;color:#1e40af;box-shadow:0 2px 6px rgba(96,165,250,0.3)}
+        .due-badge.future{background:#f1f5f9;color:#475569;box-shadow:0 2px 4px rgba(148,163,184,0.2)}
         .due-date{font-size:12px;color:#475569;margin-top:4px;font-weight:500}
         .status-cell{position:relative}
         .status-badge{display:inline-block;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;border:2px solid transparent;transition:all 0.15s;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
@@ -220,28 +221,33 @@ function parseLocalDate(dateStr){
     return new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]),0,0,0,0);
 }
 
-// Due date: For New Business use Effective Date, for Renewal use Expiration Date - 1 day
-function getDue(p){
+// Due date calculation
+// Policy view: New Business = Effective Date, Renewal = Expiration Date - 1 day (work due day before expiration)
+// Billing view: New Business = Effective Date, Renewal = Expiration Date (no adjustment)
+function getDue(p, isBilling=false){
     if(p.TransType==='New Business'){
         return parseLocalDate(p.EffDate);
     }else{
         const exp=parseLocalDate(p.ExpDate);
         if(!exp)return null;
-        exp.setDate(exp.getDate()-1);
+        if(!isBilling){
+            exp.setDate(exp.getDate()-1); // Policy: due 1 day before expiration
+        }
         return exp;
     }
 }
 
-function getDueBadge(p){
+function getDueBadge(p, isBilling=false){
     if(p.Archived)return null;
-    const due=getDue(p);if(!due)return null;
+    const due=getDue(p, isBilling);if(!due)return null;
     const today=new Date();today.setHours(0,0,0,0);
     const diff=Math.floor((due-today)/86400000);
     if(diff<0)return{text:'PAST DUE',cls:'past'};
     if(diff===0)return{text:'DUE TODAY',cls:'today'};
-    if(diff===1)return{text:'DUE TOMORROW',cls:'soon'};
-    if(diff<=7)return{text:`DUE IN ${diff} DAYS`,cls:'soon'};
-    return{text:`DUE IN ${diff} DAYS`,cls:'future'};
+    if(diff===1)return{text:'DUE TOMORROW',cls:'tomorrow'};
+    if(diff<=7)return{text:`DUE IN ${diff} DAYS`,cls:'week'};
+    if(diff<=60)return{text:`DUE IN ${diff} DAYS`,cls:'future'};
+    return null; // Don't show badge for 60+ days
 }
 
 function fmtShort(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}
@@ -297,16 +303,17 @@ function filter(){
         
         // Stat card filters - STRICT matching
         if(statFilter){
-            const due=getDue(p);
             const isPol=!EXIT.includes(p.Status);
             const isBil=['Bound','Bound-New carrier'].includes(p.Status)&&!['Payment Received','Closed'].includes(p.BillStatus);
             
             if(statFilter==='pastDue'){
-                // ONLY policies with due date BEFORE today
+                // ONLY policies with due date BEFORE today (policy due = expiration - 1)
+                const due=getDue(p, false);
                 if(!isPol||!due||due>=today)return false;
             }
             if(statFilter==='dueWeek'){
                 // ONLY policies with due date from TODAY through END of this week (7 days)
+                const due=getDue(p, false);
                 if(!isPol||!due||due<today||due>=week)return false;
             }
             if(statFilter==='progress'){
@@ -317,7 +324,8 @@ function filter(){
                 if(!isBil)return false;
             }
             if(statFilter==='billPast'){
-                // ONLY billing items with due date BEFORE today
+                // ONLY billing items with due date BEFORE today (billing due = expiration, no -1)
+                const due=getDue(p, true);
                 if(!isBil||!due||due>=today)return false;
             }
             if(statFilter==='unassign'){
@@ -359,8 +367,8 @@ function render(){
     if(!items.length){body.innerHTML='<div class="loading">No policies found</div>';document.getElementById('pagination').style.display='none';return}
     
     body.innerHTML=items.map((p,idx)=>{
-        const badge=getDueBadge(p);
-        const due=getDue(p);
+        const badge=getDueBadge(p, isBillingTab);
+        const due=getDue(p, isBillingTab);
         const effDate=parseLocalDate(p.EffDate);
         const color=COLORS[p.Status]||'#666';
         const billColor=COLORS[p.BillStatus]||'#666';
@@ -574,18 +582,24 @@ function updateStats(){
     let pd=0,dw=0,ip=0,bl=0,bp=0,ua=0;
     policies.forEach(p=>{
         if(p.Archived)return;
-        const due=getDue(p);
         const exp=parseLocalDate(p.ExpDate);
         const isPol=!EXIT.includes(p.Status);
         const isBil=['Bound','Bound-New carrier'].includes(p.Status)&&!['Payment Received','Closed'].includes(p.BillStatus);
-        // Past due: due date BEFORE today
-        if(isPol&&due&&due<today)pd++;
-        // Due this week: due date from TODAY through 6 days from now (NOT past due)
-        if(isPol&&due&&due>=today&&due<week)dw++;
+        // Past due: policy due date BEFORE today (policy due = exp - 1)
+        if(isPol){
+            const polDue=getDue(p, false);
+            if(polDue&&polDue<today)pd++;
+            // Due this week: due date from TODAY through 6 days from now (NOT past due)
+            if(polDue&&polDue>=today&&polDue<week)dw++;
+        }
         // In progress: ONLY in PROGRESS statuses
         if(isPol&&PROGRESS.includes(p.Status))ip++;
         // Billing
-        if(isBil){bl++;if(due&&due<today)bp++}
+        if(isBil){
+            bl++;
+            const bilDue=getDue(p, true); // billing due = exp (no -1)
+            if(bilDue&&bilDue<today)bp++;
+        }
         // Unassigned
         if(!p.AssignedId&&exp&&exp>=today&&exp<=f90)ua++;
     });
