@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 16 - Sticky Header + Filter Fix -->
+<!-- Version 17 - Flexbox Grid Fix -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,11 +52,11 @@
         .filters label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;color:#475569;font-weight:500}
         .filters label input{width:18px;height:18px;accent-color:#7c3aed}
         .grid{background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:visible}
-        .grid-header{display:grid;grid-template-columns:minmax(200px,1.5fr) 75px 90px 90px 130px 150px 110px 40px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:8px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
-        .grid-header.billing{grid-template-columns:minmax(180px,1.5fr) 75px 85px 85px 105px 105px 140px 105px 40px}
-        #gridBody{display:block;width:100%}
-        .grid-row{display:grid;grid-template-columns:minmax(200px,1.5fr) 75px 90px 90px 130px 150px 110px 40px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:8px;width:100%}
-        .grid-row.billing{grid-template-columns:minmax(180px,1.5fr) 75px 85px 85px 105px 105px 140px 105px 40px}
+        .grid-header{display:grid;grid-template-columns:2fr 80px 95px 95px 135px 160px 125px 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:10px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
+        .grid-header.billing{grid-template-columns:2fr 80px 90px 90px 110px 110px 150px 115px 42px}
+        #gridBody{display:flex;flex-direction:column}
+        .grid-row{display:grid;grid-template-columns:2fr 80px 95px 95px 135px 160px 125px 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:10px}
+        .grid-row.billing{grid-template-columns:2fr 80px 90px 90px 110px 110px 150px 115px 42px}
         .grid-row:nth-child(even){background:#f8fafc}
         .grid-row:hover{background:#ede9fe;box-shadow:inset 3px 0 0 #7c3aed}
         .policy-cell{display:flex;gap:12px;align-items:flex-start;min-width:0}
@@ -141,7 +141,7 @@
         .toast.show{display:block}
         .toast.ok{background:#059669}
         .toast.err{background:#dc2626}
-        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(180px,1.5fr) 70px 85px 85px 120px 140px 100px 38px;width:100%}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(160px,1.5fr) 70px 80px 80px 95px 95px 130px 95px 38px}}
+        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:2fr 75px 90px 90px 125px 150px 115px 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:2fr 75px 85px 85px 100px 100px 140px 105px 40px}}
         @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
     </style>
 </head>
