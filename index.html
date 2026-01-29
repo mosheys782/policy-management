@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 21 - Fixed due date calculation (-1 for policy, 0 for billing), new badge colors -->
+<!-- Version 22 - Fixed badge calc (display=actual date, badge=-1), Transaction filter, Top pagination -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -173,12 +173,14 @@
                     <select id="fStatus" onchange="filter()"><option value="">All Statuses</option></select>
                     <select id="fAssignee" onchange="filter()"><option value="">All Assignees</option></select>
                     <select id="fType" onchange="filter()"><option value="">All Types</option></select>
+                    <select id="fTransType" onchange="filter()"><option value="">All Transactions</option><option value="Renewal">Renewal</option><option value="New Business">New Business</option></select>
                     <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
                     <label><input type="checkbox" id="fUnassigned" onchange="filter()"> Unassigned Only</label>
                     <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
                 </div>
             </div>
             <div class="grid">
+                <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb;border-radius:16px 16px 0 0"><div id="pageInfoTop"></div><div id="pageBtnsTop"></div></div>
                 <div class="grid-header" id="gridHeader"><div>POLICY</div><div>TYPE</div><div>EFF DATE</div><div>DUE DATE</div><div>STATUS</div><div>ASSIGNED TO</div><div style="text-align:right">PREMIUM</div><div></div></div>
                 <div id="gridBody"><div class="loading"><div class="spinner"></div>Loading policies...</div></div>
                 <div class="pagination" id="pagination" style="display:none"><div id="pageInfo"></div><div id="pageBtns"></div></div>
@@ -222,32 +224,37 @@ function parseLocalDate(dateStr){
 }
 
 // Due date calculation
-// Policy view: New Business = Effective Date, Renewal = Expiration Date - 1 day (work due day before expiration)
-// Billing view: New Business = Effective Date, Renewal = Expiration Date (no adjustment)
-function getDue(p, isBilling=false){
+// Returns the actual date to DISPLAY (no adjustment)
+// For Renewal: Expiration Date, For New Business: Effective Date
+function getDue(p){
     if(p.TransType==='New Business'){
         return parseLocalDate(p.EffDate);
     }else{
-        const exp=parseLocalDate(p.ExpDate);
-        if(!exp)return null;
-        if(!isBilling){
-            exp.setDate(exp.getDate()-1); // Policy: due 1 day before expiration
-        }
-        return exp;
+        return parseLocalDate(p.ExpDate);
     }
 }
 
+// Badge calculation - for policy view, work is due 1 day BEFORE expiration
+// So if ExpDate is Jan 30, badge should say "DUE TODAY" on Jan 29
 function getDueBadge(p, isBilling=false){
     if(p.Archived)return null;
-    const due=getDue(p, isBilling);if(!due)return null;
+    const displayDate=getDue(p);if(!displayDate)return null;
     const today=new Date();today.setHours(0,0,0,0);
-    const diff=Math.floor((due-today)/86400000);
+    
+    // For badge: policy view subtracts 1 day (work due before expiration)
+    // Billing view uses actual date
+    let badgeDate=new Date(displayDate);
+    if(!isBilling && p.TransType!=='New Business'){
+        badgeDate.setDate(badgeDate.getDate()-1);
+    }
+    
+    const diff=Math.floor((badgeDate-today)/86400000);
     if(diff<0)return{text:'PAST DUE',cls:'past'};
     if(diff===0)return{text:'DUE TODAY',cls:'today'};
     if(diff===1)return{text:'DUE TOMORROW',cls:'tomorrow'};
     if(diff<=7)return{text:`DUE IN ${diff} DAYS`,cls:'week'};
     if(diff<=60)return{text:`DUE IN ${diff} DAYS`,cls:'future'};
-    return null; // Don't show badge for 60+ days
+    return null;
 }
 
 function fmtShort(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}
@@ -260,6 +267,7 @@ function filter(){
     const statusF=document.getElementById('fStatus').value;
     const assigneeF=document.getElementById('fAssignee').value;
     const typeF=document.getElementById('fType').value;
+    const transTypeF=document.getElementById('fTransType').value;
     const bizTypeF=document.getElementById('fBizType').value;
     const unassignedF=document.getElementById('fUnassigned').checked;
     const showAll=document.getElementById('fShowAll').checked;
@@ -307,26 +315,32 @@ function filter(){
             const isBil=['Bound','Bound-New carrier'].includes(p.Status)&&!['Payment Received','Closed'].includes(p.BillStatus);
             
             if(statFilter==='pastDue'){
-                // ONLY policies with due date BEFORE today (policy due = expiration - 1)
-                const due=getDue(p, false);
-                if(!isPol||!due||due>=today)return false;
+                // Policy badge date = exp - 1 for Renewal
+                let badgeDate=getDue(p);
+                if(badgeDate && p.TransType!=='New Business'){
+                    badgeDate=new Date(badgeDate);
+                    badgeDate.setDate(badgeDate.getDate()-1);
+                }
+                if(!isPol||!badgeDate||badgeDate>=today)return false;
             }
             if(statFilter==='dueWeek'){
-                // ONLY policies with due date from TODAY through END of this week (7 days)
-                const due=getDue(p, false);
-                if(!isPol||!due||due<today||due>=week)return false;
+                let badgeDate=getDue(p);
+                if(badgeDate && p.TransType!=='New Business'){
+                    badgeDate=new Date(badgeDate);
+                    badgeDate.setDate(badgeDate.getDate()-1);
+                }
+                if(!isPol||!badgeDate||badgeDate<today||badgeDate>=week)return false;
             }
             if(statFilter==='progress'){
-                // ONLY policies with IN PROGRESS statuses (NOT "Not Started")
                 if(!isPol||!PROGRESS.includes(p.Status))return false;
             }
             if(statFilter==='billing'){
                 if(!isBil)return false;
             }
             if(statFilter==='billPast'){
-                // ONLY billing items with due date BEFORE today (billing due = expiration, no -1)
-                const due=getDue(p, true);
-                if(!isBil||!due||due>=today)return false;
+                // Billing uses actual date (no -1)
+                const bilDate=getDue(p);
+                if(!isBil||!bilDate||bilDate>=today)return false;
             }
             if(statFilter==='unassign'){
                 const exp=parseLocalDate(p.ExpDate);
@@ -338,6 +352,7 @@ function filter(){
         if(statusF&&p.Status!==statusF)return false;
         if(assigneeF&&p.AssignedId!==assigneeF)return false;
         if(typeF&&p.PolicyType!==typeF)return false;
+        if(transTypeF&&p.TransType!==transTypeF)return false;
         if(bizTypeF&&p.BizType!==bizTypeF)return false;
         if(unassignedF&&p.AssignedId)return false;
         return true;
@@ -364,11 +379,11 @@ function render(){
         header.innerHTML='<div>POLICY</div><div>DUE DATE</div><div>STATUS</div><div>ASSIGNED TO</div><div>EFF DATE</div><div style="text-align:right">PREMIUM</div><div></div>';
     }
     
-    if(!items.length){body.innerHTML='<div class="loading">No policies found</div>';document.getElementById('pagination').style.display='none';return}
+    if(!items.length){body.innerHTML='<div class="loading">No policies found</div>';document.getElementById('pagination').style.display='none';document.getElementById('paginationTop').style.display='none';return}
     
     body.innerHTML=items.map((p,idx)=>{
         const badge=getDueBadge(p, isBillingTab);
-        const due=getDue(p, isBillingTab);
+        const due=getDue(p);
         const effDate=parseLocalDate(p.EffDate);
         const color=COLORS[p.Status]||'#666';
         const billColor=COLORS[p.BillStatus]||'#666';
@@ -462,14 +477,24 @@ function render(){
     }).join('');
     
     const pag=document.getElementById('pagination');
+    const pagTop=document.getElementById('paginationTop');
     if(pages>1){
-        pag.style.display='flex';
-        document.getElementById('pageInfo').textContent=`Showing ${start+1}-${Math.min(start+PAGE_SIZE,total)} of ${total}`;
+        const pageInfoText=`Showing ${start+1}-${Math.min(start+PAGE_SIZE,total)} of ${total}`;
         let btns=`<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>← Prev</button>`;
         for(let i=Math.max(1,page-2);i<=Math.min(pages,page+2);i++)btns+=`<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
         btns+=`<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>Next →</button>`;
+        
+        pag.style.display='flex';
+        document.getElementById('pageInfo').textContent=pageInfoText;
         document.getElementById('pageBtns').innerHTML=btns;
-    }else{pag.style.display='none'}
+        
+        pagTop.style.display='flex';
+        document.getElementById('pageInfoTop').textContent=pageInfoText;
+        document.getElementById('pageBtnsTop').innerHTML=btns;
+    }else{
+        pag.style.display='none';
+        pagTop.style.display='none';
+    }
 }
 
 function goPage(p){if(p<1||p>Math.ceil(filtered.length/PAGE_SIZE))return;page=p;render();window.scrollTo(0,0)}
@@ -585,20 +610,24 @@ function updateStats(){
         const exp=parseLocalDate(p.ExpDate);
         const isPol=!EXIT.includes(p.Status);
         const isBil=['Bound','Bound-New carrier'].includes(p.Status)&&!['Payment Received','Closed'].includes(p.BillStatus);
-        // Past due: policy due date BEFORE today (policy due = exp - 1)
+        
+        // For stats: policy badge date = exp - 1 for Renewal
         if(isPol){
-            const polDue=getDue(p, false);
-            if(polDue&&polDue<today)pd++;
-            // Due this week: due date from TODAY through 6 days from now (NOT past due)
-            if(polDue&&polDue>=today&&polDue<week)dw++;
+            let polBadgeDate=getDue(p);
+            if(polBadgeDate && p.TransType!=='New Business'){
+                polBadgeDate=new Date(polBadgeDate);
+                polBadgeDate.setDate(polBadgeDate.getDate()-1);
+            }
+            if(polBadgeDate&&polBadgeDate<today)pd++;
+            if(polBadgeDate&&polBadgeDate>=today&&polBadgeDate<week)dw++;
         }
         // In progress: ONLY in PROGRESS statuses
         if(isPol&&PROGRESS.includes(p.Status))ip++;
-        // Billing
+        // Billing: uses actual exp date (no -1)
         if(isBil){
             bl++;
-            const bilDue=getDue(p, true); // billing due = exp (no -1)
-            if(bilDue&&bilDue<today)bp++;
+            const bilDate=getDue(p);
+            if(bilDate&&bilDate<today)bp++;
         }
         // Unassigned
         if(!p.AssignedId&&exp&&exp>=today&&exp<=f90)ua++;
