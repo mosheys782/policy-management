@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 19 - Fixed: Type Badge (Renewal/New Business), HTML Escaping (Page 2 fix), Column Spacing (max-width) -->
+<!-- Version 20 - Full-width columns, All Business dropdown -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,11 +52,11 @@
         .filters label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;color:#475569;font-weight:500}
         .filters label input{width:18px;height:18px;accent-color:#7c3aed}
         .grid{background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:visible}
-        .grid-header{display:grid;grid-template-columns:minmax(280px,450px) 105px 130px 160px 95px 120px 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:12px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
-        .grid-header.billing{grid-template-columns:minmax(250px,400px) 100px 110px 110px 150px 95px 115px 42px}
+        .grid-header{display:grid;grid-template-columns:minmax(280px,2fr) minmax(95px,1fr) minmax(100px,1fr) minmax(130px,1.2fr) minmax(85px,1fr) minmax(100px,1fr) 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:12px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
+        .grid-header.billing{grid-template-columns:minmax(250px,2fr) minmax(90px,1fr) minmax(95px,1fr) minmax(95px,1fr) minmax(120px,1.2fr) minmax(85px,1fr) minmax(95px,1fr) 42px}
         #gridBody{display:flex;flex-direction:column}
-        .grid-row{display:grid;grid-template-columns:minmax(280px,450px) 105px 130px 160px 95px 120px 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:12px}
-        .grid-row.billing{grid-template-columns:minmax(250px,400px) 100px 110px 110px 150px 95px 115px 42px}
+        .grid-row{display:grid;grid-template-columns:minmax(280px,2fr) minmax(95px,1fr) minmax(100px,1fr) minmax(130px,1.2fr) minmax(85px,1fr) minmax(100px,1fr) 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:12px}
+        .grid-row.billing{grid-template-columns:minmax(250px,2fr) minmax(90px,1fr) minmax(95px,1fr) minmax(95px,1fr) minmax(120px,1.2fr) minmax(85px,1fr) minmax(95px,1fr) 42px}
         .grid-row:nth-child(even){background:#f8fafc}
         .grid-row:hover{background:#ede9fe;box-shadow:inset 3px 0 0 #7c3aed}
         .policy-cell{display:flex;gap:12px;align-items:flex-start;min-width:0}
@@ -142,7 +142,7 @@
         .toast.show{display:block}
         .toast.ok{background:#059669}
         .toast.err{background:#dc2626}
-        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(220px,380px) 95px 120px 145px 85px 110px 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(200px,350px) 90px 100px 100px 135px 85px 105px 40px}}
+        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(220px,2fr) minmax(85px,1fr) minmax(90px,1fr) minmax(115px,1.2fr) minmax(75px,1fr) minmax(90px,1fr) 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(200px,2fr) minmax(80px,1fr) minmax(85px,1fr) minmax(85px,1fr) minmax(105px,1.2fr) minmax(75px,1fr) minmax(85px,1fr) 40px}}
         @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
     </style>
 </head>
@@ -172,7 +172,7 @@
                     <select id="fStatus" onchange="filter()"><option value="">All Statuses</option></select>
                     <select id="fAssignee" onchange="filter()"><option value="">All Assignees</option></select>
                     <select id="fType" onchange="filter()"><option value="">All Types</option></select>
-                    <select id="fBizType" onchange="filter()"><option value="">Business with Agency</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
+                    <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
                     <label><input type="checkbox" id="fUnassigned" onchange="filter()"> Unassigned Only</label>
                     <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
                 </div>
