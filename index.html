@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 17 - Flexbox Grid Fix -->
+<!-- Version 18 - New Column Order, Type Badge, Auto-Archive -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,16 +52,17 @@
         .filters label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;color:#475569;font-weight:500}
         .filters label input{width:18px;height:18px;accent-color:#7c3aed}
         .grid{background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:visible}
-        .grid-header{display:grid;grid-template-columns:2fr 80px 95px 95px 135px 160px 125px 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:10px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
-        .grid-header.billing{grid-template-columns:2fr 80px 90px 90px 110px 110px 150px 115px 42px}
+        .grid-header{display:grid;grid-template-columns:minmax(280px,1fr) 105px 130px 160px 95px 120px 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:12px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
+        .grid-header.billing{grid-template-columns:minmax(250px,1fr) 100px 110px 110px 150px 95px 115px 42px}
         #gridBody{display:flex;flex-direction:column}
-        .grid-row{display:grid;grid-template-columns:2fr 80px 95px 95px 135px 160px 125px 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:10px}
-        .grid-row.billing{grid-template-columns:2fr 80px 90px 90px 110px 110px 150px 115px 42px}
+        .grid-row{display:grid;grid-template-columns:minmax(280px,1fr) 105px 130px 160px 95px 120px 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:12px}
+        .grid-row.billing{grid-template-columns:minmax(250px,1fr) 100px 110px 110px 150px 95px 115px 42px}
         .grid-row:nth-child(even){background:#f8fafc}
         .grid-row:hover{background:#ede9fe;box-shadow:inset 3px 0 0 #7c3aed}
         .policy-cell{display:flex;gap:12px;align-items:flex-start;min-width:0}
         .policy-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.1)}
         .policy-info{min-width:0;flex:1}
+        .policy-info .type-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px}
         .policy-info h3{font-size:13px;font-weight:700;margin-bottom:4px;line-height:1.35;color:#1e293b}
         .policy-info .meta{font-size:12px;color:#64748b;margin-bottom:3px}
         .policy-info .carrier{font-size:12px;color:#0369a1;font-weight:600;margin-bottom:4px}
@@ -141,7 +142,7 @@
         .toast.show{display:block}
         .toast.ok{background:#059669}
         .toast.err{background:#dc2626}
-        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:2fr 75px 90px 90px 125px 150px 115px 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:2fr 75px 85px 85px 100px 100px 140px 105px 40px}}
+        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(220px,1fr) 95px 120px 145px 85px 110px 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(200px,1fr) 90px 100px 100px 135px 85px 105px 40px}}
         @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
     </style>
 </head>
@@ -342,14 +343,14 @@ function render(){
     const items=filtered.slice(start,start+PAGE_SIZE);
     const isBillingTab=tab==='myBilling'||tab==='allBilling';
     
-    // Update header for billing (includes both Policy Status and Billing Status)
+    // Update header - new column order: POLICY, DUE DATE, STATUS, ASSIGNED TO, EFF DATE, PREMIUM
     const header=document.getElementById('gridHeader');
     if(isBillingTab){
         header.className='grid-header billing';
-        header.innerHTML='<div>POLICY</div><div>TYPE</div><div>EFF DATE</div><div>DUE DATE</div><div>POLICY STATUS</div><div>BILLING STATUS</div><div>ASSIGNED TO</div><div style="text-align:right">PREMIUM</div><div></div>';
+        header.innerHTML='<div>POLICY</div><div>DUE DATE</div><div>POLICY STATUS</div><div>BILLING STATUS</div><div>ASSIGNED TO</div><div>EFF DATE</div><div style="text-align:right">PREMIUM</div><div></div>';
     }else{
         header.className='grid-header';
-        header.innerHTML='<div>POLICY</div><div>TYPE</div><div>EFF DATE</div><div>DUE DATE</div><div>STATUS</div><div>ASSIGNED TO</div><div style="text-align:right">PREMIUM</div><div></div>';
+        header.innerHTML='<div>POLICY</div><div>DUE DATE</div><div>STATUS</div><div>ASSIGNED TO</div><div>EFF DATE</div><div style="text-align:right">PREMIUM</div><div></div>';
     }
     
     if(!items.length){body.innerHTML='<div class="loading">No policies found</div>';document.getElementById('pagination').style.display='none';return}
@@ -380,21 +381,23 @@ function render(){
         
         // Transaction type badge
         const transColor = p.TransType==='New Business'?'#7c3aed':'#0891b2';
-        const transLabel = p.TransType==='New Business'?'New':'Renewal';
+        const transLabel = p.TransType==='New Business'?'New Business':'Renewal';
+        
+        // Policy type badge color based on type
+        const typeColor = p.PolicyType?.includes('Commercial')?'#0369a1':p.PolicyType?.includes('Homeowners')?'#059669':p.PolicyType?.includes('Auto')?'#dc2626':'#7c3aed';
         
         if(isBillingTab){
             return `<div class="grid-row billing" onclick="openPanel('${p.id}')">
                 <div class="policy-cell">
                     <div class="policy-icon" style="background:${color}15;color:${color}">${icon}</div>
                     <div class="policy-info">
+                        ${p.PolicyType?`<div class="type-badge" style="background:${typeColor}15;color:${typeColor}">${p.PolicyType}</div>`:''}
                         <h3>${p.Title}</h3>
-                        <div class="meta">${p.PolicyNumber}${p.PolicyType?' • '+p.PolicyType:''}${p.BizType?' • '+p.BizType:''}</div>
+                        <div class="meta">${p.PolicyNumber}${p.BizType?' • '+p.BizType:''}</div>
                         ${p.Carrier?`<div class="carrier">🏢 ${p.Carrier}</div>`:''}
                         ${p.Notes?`<div class="notes">📝 ${p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes}</div>`:''}
                     </div>
                 </div>
-                <div class="trans-cell"><span class="trans-badge" style="background:${transColor}15;color:${transColor}">${transLabel}</span></div>
-                <div class="date-cell">${effDate?fmtShort(effDate):'-'}</div>
                 <div class="due-cell">
                     ${badge?`<div class="due-badge ${badge.cls}">${badge.text}</div>`:''}
                     <div class="due-date">${due?fmtShort(due):''}</div>
@@ -411,6 +414,7 @@ function render(){
                         <span class="name">${aName}</span>
                     </div>
                 </div>
+                <div class="date-cell">${effDate?fmtShort(effDate):'-'}</div>
                 <div class="premium-cell">${premiumHtml}</div>
                 <div><button class="view-btn" onclick="event.stopPropagation();openPanel('${p.id}')">👁</button></div>
             </div>`;
@@ -419,14 +423,13 @@ function render(){
                 <div class="policy-cell">
                     <div class="policy-icon" style="background:${color}15;color:${color}">${icon}</div>
                     <div class="policy-info">
+                        ${p.PolicyType?`<div class="type-badge" style="background:${typeColor}15;color:${typeColor}">${p.PolicyType}</div>`:''}
                         <h3>${p.Title}</h3>
-                        <div class="meta">${p.PolicyNumber}${p.PolicyType?' • '+p.PolicyType:''}${p.BizType?' • '+p.BizType:''}</div>
+                        <div class="meta">${p.PolicyNumber}${p.BizType?' • '+p.BizType:''}</div>
                         ${p.Carrier?`<div class="carrier">🏢 ${p.Carrier}</div>`:''}
                         ${p.Notes?`<div class="notes">📝 ${p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes}</div>`:''}
                     </div>
                 </div>
-                <div class="trans-cell"><span class="trans-badge" style="background:${transColor}15;color:${transColor}">${transLabel}</span></div>
-                <div class="date-cell">${effDate?fmtShort(effDate):'-'}</div>
                 <div class="due-cell">
                     ${badge?`<div class="due-badge ${badge.cls}">${badge.text}</div>`:''}
                     <div class="due-date">${due?fmtShort(due):''}</div>
@@ -440,6 +443,7 @@ function render(){
                         <span class="name">${aName}</span>
                     </div>
                 </div>
+                <div class="date-cell">${effDate?fmtShort(effDate):'-'}</div>
                 <div class="premium-cell">${premiumHtml}</div>
                 <div><button class="view-btn" onclick="event.stopPropagation();openPanel('${p.id}')">👁</button></div>
             </div>`;
@@ -478,10 +482,29 @@ async function setStatus(id,status,isBilling){
     document.querySelectorAll('.status-dd').forEach(d=>d.remove());
     try{
         const field=isBilling?{BillingStatus:status}:{RenewalStatus:status};
+        
+        // Auto-archive logic
+        // Renewal Status: Bound-Direct Bill, Lost → auto-archive
+        // Billing Status: Payment Received, Closed → auto-archive
+        const autoArchiveRenewal=['Bound-Direct Bill','Lost'];
+        const autoArchiveBilling=['Payment Received','Closed'];
+        let shouldArchive=false;
+        if(!isBilling && autoArchiveRenewal.includes(status)){
+            shouldArchive=true;
+        }else if(isBilling && autoArchiveBilling.includes(status)){
+            shouldArchive=true;
+        }
+        if(shouldArchive){
+            field.Archived=true;
+        }
+        
         await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items/${id}/fields`,{method:'PATCH',body:JSON.stringify(field)});
         const p=policies.find(x=>x.id===id);
-        if(p){if(isBilling)p.BillStatus=status;else p.Status=status}
-        toast('Status updated','ok');
+        if(p){
+            if(isBilling)p.BillStatus=status;else p.Status=status;
+            if(shouldArchive)p.Archived=true;
+        }
+        toast(shouldArchive?'Status updated & Archived':'Status updated','ok');
         filter();updateStats();
     }catch(e){toast('Update failed','err')}
 }
