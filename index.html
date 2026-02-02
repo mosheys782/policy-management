@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 25 - Added AMS360 customer link column, fixed assignee colors to be distinct -->
+<!-- Version 26 - Added AMS360 customer link column, fixed assignee colors with 16 distinct colors -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -195,7 +195,7 @@ const CONFIG={clientId:'d2dbeace-3b37-4da9-85db-0bb4ca328f68',tenantId:'8b20613e
 const STATUSES=['Not Started','In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received','Bound-Direct Bill','Bound','Bound-New carrier','Lost','Replaced'];
 const BILL_STATUSES=['Not Started','Invoice Sent','Payment Received','Closed'];
 const COLORS={'Not Started':'#6b7280','In-Progress':'#2563eb','Pending – Quote':'#7c3aed','Pending – Customer':'#d97706','Pending – Underwriting':'#db2777','Quote-Received':'#059669','Bound-Direct Bill':'#d97706','Bound':'#16a34a','Bound-New carrier':'#0891b2','Lost':'#dc2626','Replaced':'#6b7280','Invoice Sent':'#d97706','Payment Received':'#16a34a','Closed':'#6b7280'};
-const EXIT=['Bound','Bound-Direct Bill','Bound-New carrier','Lost','Replaced'],PROGRESS=['In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received'],ACOLORS=['#dc2626','#ea580c','#d97706','#16a34a','#0891b2','#2563eb','#7c3aed','#c026d3'];
+const EXIT=['Bound','Bound-Direct Bill','Bound-New carrier','Lost','Replaced'],PROGRESS=['In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received'],ACOLORS=['#dc2626','#ea580c','#d97706','#16a34a','#0891b2','#2563eb','#7c3aed','#c026d3','#059669','#0d9488','#6366f1','#8b5cf6','#ec4899','#f43f5e','#84cc16','#06b6d4'];
 const msalConfig={auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:location.origin},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}};
 let msal,user,token,currentUserId=null,policies=[],filtered=[],siteUsers=[],tab='myPolicy',selected=null,page=1,PAGE_SIZE=50,statFilter=null;
 const F_ASSIGNED='AssignedTo0LookupId',F_NOTES='NextStep';
@@ -308,9 +308,16 @@ function getDueBadge(p, isBilling=false){
 function fmtShort(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}
 function cur(v){return v!=null?'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):''}
 function init(n){if(!n)return'?';const p=n.split(' ');return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():n.substring(0,2).toUpperCase()}
-// Hash-based color assignment using name for better distribution
+// Hash-based color assignment using first name for better distribution
 function hashCode(str){let h=0;for(let i=0;i<str.length;i++)h=((h<<5)-h)+str.charCodeAt(i);return Math.abs(h)}
-function acolor(id,name){if(name&&name!=='Unassigned')return ACOLORS[hashCode(name)%ACOLORS.length];return ACOLORS[Math.abs(Number(id)||0)%ACOLORS.length]}
+function acolor(id,name){
+    if(name&&name!=='Unassigned'){
+        // Extract first name (before pipe or space) for more distinct hashing
+        const firstName=name.split(/[|\s]/)[0].trim();
+        return ACOLORS[hashCode(firstName)%ACOLORS.length];
+    }
+    return ACOLORS[Math.abs(Number(id)||0)%ACOLORS.length];
+}
 
 function filter(){
     const search=document.getElementById('search').value.toLowerCase();
