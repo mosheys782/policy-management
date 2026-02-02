@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 24 - Auto-refresh every 3 min, refresh on tab focus, manual refresh button -->
+<!-- Version 25 - Added AMS360 customer link column, fixed assignee colors to be distinct -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,11 +52,11 @@
         .filters label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;color:#475569;font-weight:500}
         .filters label input{width:18px;height:18px;accent-color:#7c3aed}
         .grid{background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:visible}
-        .grid-header{display:grid;grid-template-columns:minmax(280px,2fr) minmax(95px,1fr) minmax(100px,1fr) minmax(130px,1.2fr) minmax(85px,1fr) minmax(100px,1fr) 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:12px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
-        .grid-header.billing{grid-template-columns:minmax(250px,2fr) minmax(90px,1fr) minmax(95px,1fr) minmax(95px,1fr) minmax(120px,1.2fr) minmax(85px,1fr) minmax(95px,1fr) 42px}
+        .grid-header{display:grid;grid-template-columns:minmax(280px,2fr) 50px minmax(95px,1fr) minmax(100px,1fr) minmax(130px,1.2fr) minmax(85px,1fr) minmax(100px,1fr) 42px;padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:0.8px;gap:12px;position:sticky;top:0;z-index:10;border-radius:16px 16px 0 0}
+        .grid-header.billing{grid-template-columns:minmax(250px,2fr) 50px minmax(90px,1fr) minmax(95px,1fr) minmax(95px,1fr) minmax(120px,1.2fr) minmax(85px,1fr) minmax(95px,1fr) 42px}
         #gridBody{display:flex;flex-direction:column}
-        .grid-row{display:grid;grid-template-columns:minmax(280px,2fr) minmax(95px,1fr) minmax(100px,1fr) minmax(130px,1.2fr) minmax(85px,1fr) minmax(100px,1fr) 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:12px}
-        .grid-row.billing{grid-template-columns:minmax(250px,2fr) minmax(90px,1fr) minmax(95px,1fr) minmax(95px,1fr) minmax(120px,1.2fr) minmax(85px,1fr) minmax(95px,1fr) 42px}
+        .grid-row{display:grid;grid-template-columns:minmax(280px,2fr) 50px minmax(95px,1fr) minmax(100px,1fr) minmax(130px,1.2fr) minmax(85px,1fr) minmax(100px,1fr) 42px;padding:16px 20px;border-bottom:1px solid #e2e8f0;align-items:center;cursor:pointer;gap:12px}
+        .grid-row.billing{grid-template-columns:minmax(250px,2fr) 50px minmax(90px,1fr) minmax(95px,1fr) minmax(95px,1fr) minmax(120px,1.2fr) minmax(85px,1fr) minmax(95px,1fr) 42px}
         .grid-row:nth-child(even){background:#f8fafc}
         .grid-row:hover{background:#ede9fe;box-shadow:inset 3px 0 0 #7c3aed}
         .policy-cell{display:flex;gap:12px;align-items:flex-start;min-width:0}
@@ -143,7 +143,7 @@
         .toast.show{display:block}
         .toast.ok{background:#059669}
         .toast.err{background:#dc2626}
-        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(220px,2fr) minmax(85px,1fr) minmax(90px,1fr) minmax(115px,1.2fr) minmax(75px,1fr) minmax(90px,1fr) 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(200px,2fr) minmax(80px,1fr) minmax(85px,1fr) minmax(85px,1fr) minmax(105px,1.2fr) minmax(75px,1fr) minmax(85px,1fr) 40px}}
+        @media(max-width:1400px){.grid-header,.grid-row{grid-template-columns:minmax(220px,2fr) 45px minmax(85px,1fr) minmax(90px,1fr) minmax(115px,1.2fr) minmax(75px,1fr) minmax(90px,1fr) 40px}.grid-header.billing,.grid-row.billing{grid-template-columns:minmax(200px,2fr) 45px minmax(80px,1fr) minmax(85px,1fr) minmax(85px,1fr) minmax(105px,1.2fr) minmax(75px,1fr) minmax(85px,1fr) 40px}}
         @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
     </style>
 </head>
@@ -212,7 +212,7 @@ async function graph(url,opts={}){if(!token)await getToken();const r=await fetch
 
 async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/User%20Information%20List/items?$expand=fields&$top=500`);siteUsers=r.value.map(u=>({id:String(u.fields.id),name:u.fields.Title||'',email:u.fields.EMail||''})).filter(u=>u.name);const email=user.username?.toLowerCase();const me=siteUsers.find(u=>u.email?.toLowerCase()===email);if(me)currentUserId=me.id;console.log('Current user:',currentUserId)}catch(e){console.log('Site users error:',e.message)}}
 
-async function loadPolicies(){document.getElementById('gridBody').innerHTML='<div class="loading"><div class="spinner"></div>Loading policies...</div>';try{policies=[];let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;const types=new Set();while(url){const r=await graph(url);r.value.forEach(item=>{const f=item.fields;let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}const pType=f.PolicyType||'';if(pType)types.add(pType);policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:pType,Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName})});url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null}const typeSelect=document.getElementById('fType');[...types].sort().forEach(t=>typeSelect.innerHTML+=`<option value="${t}">${t}</option>`);console.log('Loaded:',policies.length);buildAssigneeFilter();filter();updateStats()}catch(e){console.error('Load:',e);document.getElementById('gridBody').innerHTML='<div class="loading">Error loading policies</div>'}}
+async function loadPolicies(){document.getElementById('gridBody').innerHTML='<div class="loading"><div class="spinner"></div>Loading policies...</div>';try{policies=[];let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;const types=new Set();while(url){const r=await graph(url);r.value.forEach(item=>{const f=item.fields;let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}const pType=f.PolicyType||'';if(pType)types.add(pType);policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:pType,Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||''})});url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null}const typeSelect=document.getElementById('fType');[...types].sort().forEach(t=>typeSelect.innerHTML+=`<option value="${t}">${t}</option>`);console.log('Loaded:',policies.length);buildAssigneeFilter();filter();updateStats()}catch(e){console.error('Load:',e);document.getElementById('gridBody').innerHTML='<div class="loading">Error loading policies</div>'}}
 
 function buildAssigneeFilter(){const names=new Map();policies.forEach(p=>{if(p.AssignedId&&p.AssignedName)names.set(p.AssignedId,p.AssignedName)});const sel=document.getElementById('fAssignee');sel.innerHTML='<option value="">All Assignees</option>';[...names.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([id,name])=>sel.innerHTML+=`<option value="${id}">${name}</option>`)}
 
@@ -234,7 +234,7 @@ async function refreshData(silent=false){
                 const f=item.fields;
                 let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;
                 if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}
-                policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:f.PolicyType||'',Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName});
+                policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:f.PolicyType||'',Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||''});
             });
             url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null;
         }
@@ -308,7 +308,9 @@ function getDueBadge(p, isBilling=false){
 function fmtShort(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}
 function cur(v){return v!=null?'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):''}
 function init(n){if(!n)return'?';const p=n.split(' ');return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():n.substring(0,2).toUpperCase()}
-function acolor(id){return ACOLORS[Math.abs(Number(id)||0)%ACOLORS.length]}
+// Hash-based color assignment using name for better distribution
+function hashCode(str){let h=0;for(let i=0;i<str.length;i++)h=((h<<5)-h)+str.charCodeAt(i);return Math.abs(h)}
+function acolor(id,name){if(name&&name!=='Unassigned')return ACOLORS[hashCode(name)%ACOLORS.length];return ACOLORS[Math.abs(Number(id)||0)%ACOLORS.length]}
 
 function filter(){
     const search=document.getElementById('search').value.toLowerCase();
@@ -417,14 +419,14 @@ function render(){
     const items=filtered.slice(start,start+PAGE_SIZE);
     const isBillingTab=tab==='myBilling'||tab==='allBilling';
     
-    // Update header - new column order: POLICY, DUE DATE, STATUS, ASSIGNED TO, EFF DATE, PREMIUM
+    // Update header - new column order: POLICY, AMS360, DUE DATE, STATUS, ASSIGNED TO, EFF DATE, PREMIUM
     const header=document.getElementById('gridHeader');
     if(isBillingTab){
         header.className='grid-header billing';
-        header.innerHTML='<div>POLICY</div><div>DUE DATE</div><div>POLICY STATUS</div><div>BILLING STATUS</div><div>ASSIGNED TO</div><div>EFF DATE</div><div style="text-align:right">PREMIUM</div><div></div>';
+        header.innerHTML='<div>POLICY</div><div>AMS</div><div>DUE DATE</div><div>POLICY STATUS</div><div>BILLING STATUS</div><div>ASSIGNED TO</div><div>EFF DATE</div><div style="text-align:right">PREMIUM</div><div></div>';
     }else{
         header.className='grid-header';
-        header.innerHTML='<div>POLICY</div><div>DUE DATE</div><div>STATUS</div><div>ASSIGNED TO</div><div>EFF DATE</div><div style="text-align:right">PREMIUM</div><div></div>';
+        header.innerHTML='<div>POLICY</div><div>AMS</div><div>DUE DATE</div><div>STATUS</div><div>ASSIGNED TO</div><div>EFF DATE</div><div style="text-align:right">PREMIUM</div><div></div>';
     }
     
     if(!items.length){body.innerHTML='<div class="loading">No policies found</div>';document.getElementById('pagination').style.display='none';document.getElementById('paginationTop').style.display='none';return}
@@ -436,7 +438,7 @@ function render(){
         const color=COLORS[p.Status]||'#666';
         const billColor=COLORS[p.BillStatus]||'#666';
         const aName=p.AssignedName||'Unassigned';
-        const ac=p.AssignedId?acolor(p.AssignedId):'#9ca3af';
+        const ac=p.AssignedId?acolor(p.AssignedId,p.AssignedName):'#9ca3af';
         const icon=p.TransType==='New Business'?'✨':'🔄';
         const hasChange=p.DollarChg||p.PctChg!=null;
         
@@ -472,6 +474,7 @@ function render(){
                         ${p.Notes?`<div class="notes">📝 ${esc(p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes)}</div>`:''}
                     </div>
                 </div>
+                <div class="ams-cell" style="text-align:center">${p.AMS360Link?`<a href="${esc(p.AMS360Link)}" target="_blank" onclick="event.stopPropagation()" title="Open in AMS360" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#0891b2;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">🔗</a>`:''}</div>
                 <div class="due-cell">
                     ${badge?`<div class="due-badge ${badge.cls}">${badge.text}</div>`:''}
                     <div class="due-date">${due?fmtShort(due):''}</div>
@@ -504,6 +507,7 @@ function render(){
                         ${p.Notes?`<div class="notes">📝 ${esc(p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes)}</div>`:''}
                     </div>
                 </div>
+                <div class="ams-cell" style="text-align:center">${p.AMS360Link?`<a href="${esc(p.AMS360Link)}" target="_blank" onclick="event.stopPropagation()" title="Open in AMS360" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#0891b2;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">🔗</a>`:''}</div>
                 <div class="due-cell">
                     ${badge?`<div class="due-badge ${badge.cls}">${badge.text}</div>`:''}
                     <div class="due-date">${due?fmtShort(due):''}</div>
@@ -631,7 +635,7 @@ function renderGridUserListDD(policyId,users){
     if(!list)return;
     list.innerHTML=`<div class="assignee-opt" onclick="setGridAssigneeDD('${policyId}','','',true)"><div class="avatar" style="background:#9ca3af">?</div>Unassigned</div>`+users.map(u=>{
         const isAzure=u.isAzure||!/^\d+$/.test(u.id);
-        return `<div class="assignee-opt" onclick="setGridAssigneeDD('${policyId}','${u.id}','${u.name.replace(/'/g,"\\'")}',${!isAzure})"><div class="avatar" style="background:${acolor(u.id)}">${init(u.name)}</div><div style="flex:1;min-width:0"><div style="font-weight:500">${u.name}</div>${u.email?`<div style="font-size:11px;color:#9ca3af;overflow:hidden;text-overflow:ellipsis">${u.email}</div>`:''}${isAzure?`<div style="font-size:10px;color:#f59e0b">⚠ Not in SharePoint</div>`:''}</div></div>`;
+        return `<div class="assignee-opt" onclick="setGridAssigneeDD('${policyId}','${u.id}','${u.name.replace(/'/g,"\\'")}',${!isAzure})"><div class="avatar" style="background:${acolor(u.id,u.name)}">${init(u.name)}</div><div style="flex:1;min-width:0"><div style="font-weight:500">${u.name}</div>${u.email?`<div style="font-size:11px;color:#9ca3af;overflow:hidden;text-overflow:ellipsis">${u.email}</div>`:''}${isAzure?`<div style="font-size:10px;color:#f59e0b">⚠ Not in SharePoint</div>`:''}</div></div>`;
     }).join('');
 }
 
@@ -805,7 +809,7 @@ function openPanel(id){
 }
 
 let panelSearchTimeout=null;
-async function searchPanelUsers(q){const dd=document.getElementById('panelUserDD');q=q.trim().toLowerCase();if(q.length<2){dd.innerHTML=`<div class="autocomplete-opt" onclick="selectPanelUser('','',true)"><div class="avatar" style="background:#9ca3af">?</div>Unassigned</div>`+siteUsers.slice(0,10).map(u=>`<div class="autocomplete-opt" onclick="selectPanelUser('${u.id}','${u.name.replace(/'/g,"\\'")}',true)"><div class="avatar" style="background:${acolor(u.id)}">${init(u.name)}</div>${u.name}</div>`).join('');dd.classList.add('open');return}const siteMatches=siteUsers.filter(u=>u.name.toLowerCase().includes(q));dd.innerHTML=`<div class="autocomplete-opt" onclick="selectPanelUser('','',true)"><div class="avatar" style="background:#9ca3af">?</div>Unassigned</div>`+siteMatches.slice(0,10).map(u=>`<div class="autocomplete-opt" onclick="selectPanelUser('${u.id}','${u.name.replace(/'/g,"\\'")}',true)"><div class="avatar" style="background:${acolor(u.id)}">${init(u.name)}</div>${u.name}</div>`).join('');dd.classList.add('open');clearTimeout(panelSearchTimeout);panelSearchTimeout=setTimeout(async()=>{try{const r=await graph(`/users?$filter=startswith(displayName,'${encodeURIComponent(q)}')&$select=id,displayName,mail&$top=10`);const azUsers=r.value.map(u=>({id:u.id,name:u.displayName,email:u.mail}));const combined=[...siteMatches.map(u=>({...u,isSite:true}))];azUsers.forEach(au=>{if(!combined.find(su=>su.name.toLowerCase()===au.name.toLowerCase()))combined.push({...au,isSite:false})});dd.innerHTML=`<div class="autocomplete-opt" onclick="selectPanelUser('','',true)"><div class="avatar" style="background:#9ca3af">?</div>Unassigned</div>`+combined.slice(0,15).map(u=>`<div class="autocomplete-opt" onclick="selectPanelUser('${u.id}','${u.name.replace(/'/g,"\\'")}',${u.isSite!==false})"><div class="avatar" style="background:${acolor(u.id)}">${init(u.name)}</div><div><div>${u.name}</div>${u.email?`<div style="font-size:11px;color:#9ca3af">${u.email}</div>`:''}${u.isSite===false?`<div style="font-size:10px;color:#f59e0b">⚠ Not in SharePoint</div>`:''}</div></div>`).join('')}catch(e){console.error(e)}},300)}
+async function searchPanelUsers(q){const dd=document.getElementById('panelUserDD');q=q.trim().toLowerCase();if(q.length<2){dd.innerHTML=`<div class="autocomplete-opt" onclick="selectPanelUser('','',true)"><div class="avatar" style="background:#9ca3af">?</div>Unassigned</div>`+siteUsers.slice(0,10).map(u=>`<div class="autocomplete-opt" onclick="selectPanelUser('${u.id}','${u.name.replace(/'/g,"\\'")}',true)"><div class="avatar" style="background:${acolor(u.id,u.name)}">${init(u.name)}</div>${u.name}</div>`).join('');dd.classList.add('open');return}const siteMatches=siteUsers.filter(u=>u.name.toLowerCase().includes(q));dd.innerHTML=`<div class="autocomplete-opt" onclick="selectPanelUser('','',true)"><div class="avatar" style="background:#9ca3af">?</div>Unassigned</div>`+siteMatches.slice(0,10).map(u=>`<div class="autocomplete-opt" onclick="selectPanelUser('${u.id}','${u.name.replace(/'/g,"\\'")}',true)"><div class="avatar" style="background:${acolor(u.id,u.name)}">${init(u.name)}</div>${u.name}</div>`).join('');dd.classList.add('open');clearTimeout(panelSearchTimeout);panelSearchTimeout=setTimeout(async()=>{try{const r=await graph(`/users?$filter=startswith(displayName,'${encodeURIComponent(q)}')&$select=id,displayName,mail&$top=10`);const azUsers=r.value.map(u=>({id:u.id,name:u.displayName,email:u.mail}));const combined=[...siteMatches.map(u=>({...u,isSite:true}))];azUsers.forEach(au=>{if(!combined.find(su=>su.name.toLowerCase()===au.name.toLowerCase()))combined.push({...au,isSite:false})});dd.innerHTML=`<div class="autocomplete-opt" onclick="selectPanelUser('','',true)"><div class="avatar" style="background:#9ca3af">?</div>Unassigned</div>`+combined.slice(0,15).map(u=>`<div class="autocomplete-opt" onclick="selectPanelUser('${u.id}','${u.name.replace(/'/g,"\\'")}',${u.isSite!==false})"><div class="avatar" style="background:${acolor(u.id,u.name)}">${init(u.name)}</div><div><div>${u.name}</div>${u.email?`<div style="font-size:11px;color:#9ca3af">${u.email}</div>`:''}${u.isSite===false?`<div style="font-size:10px;color:#f59e0b">⚠ Not in SharePoint</div>`:''}</div></div>`).join('')}catch(e){console.error(e)}},300)}
 
 function selectPanelUser(id,name,isSite){document.getElementById('pAssignId').value=id;document.getElementById('pAssignName').value=name;document.getElementById('pAssignIsSite').value=isSite?'true':'false';document.getElementById('panelUserDD').classList.remove('open')}
 function closePanel(){document.getElementById('panel').classList.remove('open');document.getElementById('panelBg').classList.remove('open');selected=null}
