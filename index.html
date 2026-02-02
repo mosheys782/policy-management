@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 33 - Lighter table headers and blue nav header -->
+<!-- Version 43 - Sticky header + sticky stats/tabs/filters section -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -9,14 +9,17 @@
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;font-size:14px}
+        .hidden{display:none !important}
+        .app{display:none}
         .login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)}
         .login-card{background:#fff;padding:48px;border-radius:16px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.15);max-width:400px}
         .login-card h1{font-size:24px;margin-bottom:8px;color:#1e293b}
         .login-card p{color:#64748b;margin-bottom:32px;font-size:14px}
         .login-btn{background:#2563eb;color:#fff;border:none;padding:14px 32px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:500;transition:all 0.15s}
         .login-btn:hover{background:#1d4ed8}
-        .app{display:none}
-        .header{background:#2563eb;color:#fff;padding:16px 32px;display:flex;justify-content:space-between;align-items:center}
+        .header{background:#2563eb;color:#fff;padding:16px 32px;display:none;justify-content:space-between;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,0.15);height:64px;position:-webkit-sticky;position:sticky;top:0;z-index:9999}
+        .header.visible{display:flex}
+        .sticky-section{position:-webkit-sticky;position:sticky;top:64px;z-index:100;background:#f8fafc;padding:24px 0 20px 0;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
         .header h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
         .header-right{display:flex;gap:12px;align-items:center}
         .search-box{position:relative}
@@ -27,8 +30,8 @@
         .new-btn:hover{background:#f8fafc}
         .user-badge{display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.15)}
         .user-badge .avatar{width:32px;height:32px;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
-        .main{padding:24px 32px;max-width:1800px;margin:0 auto}
-        .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:24px}
+        .main{padding:0 32px 24px 32px;max-width:1800px;margin:0 auto}
+        .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:20px}
         .stat{padding:20px;border-radius:12px;cursor:pointer;transition:all 0.2s;border:1px solid #e5e7eb;background:#fff}
         .stat:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.08)}
         .stat .num{font-size:32px;font-weight:700;margin-bottom:4px}
@@ -39,7 +42,7 @@
         .stat.teal{border-left:4px solid #14b8a6}.stat.teal .num{color:#14b8a6}
         .stat.rose{border-left:4px solid #f43f5e}.stat.rose .num{color:#f43f5e}
         .stat.green{border-left:4px solid #22c55e}.stat.green .num{color:#22c55e}
-        .tabs{background:#fff;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #e5e7eb}
+        .tabs{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #e5e7eb}
         .tab-row{display:flex;border-bottom:1px solid #e5e7eb;padding:0 8px}
         .tab{padding:14px 20px;cursor:pointer;border-bottom:2px solid transparent;font-weight:500;font-size:13px;color:#64748b;display:flex;align-items:center;gap:8px;transition:all 0.15s}
         .tab:hover{color:#3b82f6;background:#f8fafc}
@@ -55,7 +58,7 @@
         .filters label input{width:16px;height:16px;accent-color:#3b82f6}
         .grid{background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #e5e7eb;overflow:hidden}
         .grid-table{width:100%;border-collapse:collapse}
-        .grid-table th{padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.5px;text-align:center;white-space:nowrap;border-bottom:2px solid #e2e8f0}
+        .grid-table th{padding:14px 16px;background:#e2e8f0;font-size:11px;font-weight:600;color:#334155;text-transform:uppercase;letter-spacing:0.5px;text-align:center;white-space:nowrap;border-bottom:2px solid #cbd5e1}
         .grid-table th:first-child{text-align:left;padding-left:24px}
         .grid-table th:last-child{padding-right:24px}
         .grid-table th.premium-col{text-align:right}
@@ -113,7 +116,7 @@
         .premium-chg.down{color:#22c55e}
         .view-btn{width:32px;height:32px;border:none;border-radius:6px;background:#f1f5f9;cursor:pointer;font-size:13px;transition:all 0.15s;color:#64748b}
         .view-btn:hover{background:#3b82f6;color:#fff}
-        .pagination{padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#f8fafc}
+        .pagination{padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff}
         .page-btn{padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;transition:all 0.15s}
         .page-btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
         .page-btn:hover:not(.active):not(:disabled){border-color:#3b82f6;color:#3b82f6}
@@ -158,38 +161,40 @@
 </head>
 <body>
     <div id="login" class="login-screen"><div class="login-card"><h1>📋 Policy Management</h1><p>Sign in with your Microsoft 365 account</p><button class="login-btn" onclick="signIn()">Sign In with Microsoft</button></div></div>
+    <header id="appHeader" class="header"><h1>📋 Policy Management</h1><div class="header-right"><div class="search-box"><input type="text" id="search" placeholder="Search policies..." oninput="filter()"></div><button class="new-btn" onclick="refreshData()" title="Refresh data">🔄</button><button class="new-btn" onclick="newPolicy()">+ New Policy</button><div class="user-badge" onclick="signOut()"><div class="avatar" id="userAvatar">?</div><span id="userName">User</span></div></div></header>
     <div id="app" class="app">
-        <header class="header"><h1>📋 Policy Management</h1><div class="header-right"><div class="search-box"><input type="text" id="search" placeholder="Search policies..." oninput="filter()"></div><button class="new-btn" onclick="refreshData()" title="Refresh data">🔄</button><button class="new-btn" onclick="newPolicy()">+ New Policy</button><div class="user-badge" onclick="signOut()"><div class="avatar" id="userAvatar">?</div><span id="userName">User</span></div></div></header>
         <main class="main">
-            <div class="stats">
-                <div class="stat red" onclick="filterStat('pastDue')"><div class="num" id="sPastDue">0</div><div class="label">Past Due</div></div>
-                <div class="stat orange" onclick="filterStat('dueWeek')"><div class="num" id="sDueWeek">0</div><div class="label">Due This Week</div></div>
-                <div class="stat gray" onclick="filterStat('progress')"><div class="num" id="sProgress">0</div><div class="label">In Progress</div></div>
-                <div class="stat teal" onclick="filterStat('billing')"><div class="num" id="sBilling">0</div><div class="label">In Billing</div></div>
-                <div class="stat rose" onclick="filterStat('billPast')"><div class="num" id="sBillPast">0</div><div class="label">Billing Past Due</div></div>
-                <div class="stat green" onclick="filterStat('unassign')"><div class="num" id="sUnassign">0</div><div class="label">Unassigned</div></div>
-            </div>
-            <div class="tabs">
-                <div class="tab-row">
-                    <div class="tab active" data-tab="myPolicy" onclick="switchTab('myPolicy')">📋 My Policies<span class="count" id="tMyPol">0</span></div>
-                    <div class="tab" data-tab="myBilling" onclick="switchTab('myBilling')">💰 My Billing<span class="count" id="tMyBil">0</span></div>
-                    <div class="tab-divider"></div>
-                    <div class="tab" data-tab="allPolicy" onclick="switchTab('allPolicy')">📋 All Policies<span class="count" id="tAllPol">0</span></div>
-                    <div class="tab" data-tab="allBilling" onclick="switchTab('allBilling')">💰 All Billing<span class="count" id="tAllBil">0</span></div>
-                    <div class="tab" data-tab="archived" onclick="switchTab('archived')">📁 Archived<span class="count" id="tArch">0</span></div>
+            <div class="sticky-section">
+                <div class="stats">
+                    <div class="stat red" onclick="filterStat('pastDue')"><div class="num" id="sPastDue">0</div><div class="label">Past Due</div></div>
+                    <div class="stat orange" onclick="filterStat('dueWeek')"><div class="num" id="sDueWeek">0</div><div class="label">Due This Week</div></div>
+                    <div class="stat gray" onclick="filterStat('progress')"><div class="num" id="sProgress">0</div><div class="label">In Progress</div></div>
+                    <div class="stat teal" onclick="filterStat('billing')"><div class="num" id="sBilling">0</div><div class="label">In Billing</div></div>
+                    <div class="stat rose" onclick="filterStat('billPast')"><div class="num" id="sBillPast">0</div><div class="label">Billing Past Due</div></div>
+                    <div class="stat green" onclick="filterStat('unassign')"><div class="num" id="sUnassign">0</div><div class="label">Unassigned</div></div>
                 </div>
-                <div class="filters">
-                    <select id="fStatus" onchange="filter()"><option value="">All Statuses</option></select>
-                    <select id="fAssignee" onchange="filter()"><option value="">All Assignees</option></select>
-                    <select id="fType" onchange="filter()"><option value="">All Types</option></select>
-                    <select id="fTransType" onchange="filter()"><option value="">All Transactions</option><option value="Renewal">Renewal</option><option value="New Business">New Business</option></select>
-                    <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
-                    <label><input type="checkbox" id="fUnassigned" onchange="filter()"> Unassigned Only</label>
-                    <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
+                <div class="tabs">
+                    <div class="tab-row">
+                        <div class="tab active" data-tab="myPolicy" onclick="switchTab('myPolicy')">📋 My Policies<span class="count" id="tMyPol">0</span></div>
+                        <div class="tab" data-tab="myBilling" onclick="switchTab('myBilling')">💰 My Billing<span class="count" id="tMyBil">0</span></div>
+                        <div class="tab-divider"></div>
+                        <div class="tab" data-tab="allPolicy" onclick="switchTab('allPolicy')">📋 All Policies<span class="count" id="tAllPol">0</span></div>
+                        <div class="tab" data-tab="allBilling" onclick="switchTab('allBilling')">💰 All Billing<span class="count" id="tAllBil">0</span></div>
+                        <div class="tab" data-tab="archived" onclick="switchTab('archived')">📁 Archived<span class="count" id="tArch">0</span></div>
+                    </div>
+                    <div class="filters">
+                        <select id="fStatus" onchange="filter()"><option value="">All Statuses</option></select>
+                        <select id="fAssignee" onchange="filter()"><option value="">All Assignees</option></select>
+                        <select id="fType" onchange="filter()"><option value="">All Types</option></select>
+                        <select id="fTransType" onchange="filter()"><option value="">All Transactions</option><option value="Renewal">Renewal</option><option value="New Business">New Business</option></select>
+                        <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
+                        <label><input type="checkbox" id="fUnassigned" onchange="filter()"> Unassigned Only</label>
+                        <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
+                    </div>
                 </div>
             </div>
             <div class="grid">
-                <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb;border-radius:16px 16px 0 0"><div id="pageInfoTop"></div><div id="pageBtnsTop"></div></div>
+                <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb;border-radius:16px 16px 0 0;background:#fff"><div id="pageInfoTop"></div><div id="pageBtnsTop"></div></div>
                 <table class="grid-table" id="gridTable">
                     <thead id="gridHeader"></thead>
                     <tbody id="gridBody"><tr><td colspan="8" class="loading"><div class="spinner"></div>Loading policies...</td></tr></tbody>
@@ -218,7 +223,7 @@ document.addEventListener('DOMContentLoaded',async()=>{msal=new window.msal.Publ
 async function signIn(){try{const r=await msal.loginPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});user=r.account;token=r.accessToken;showApp()}catch(e){console.error(e);toast('Login failed','err')}}
 async function getToken(){try{const r=await msal.acquireTokenSilent({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All'],account:user});token=r.accessToken}catch(e){const r=await msal.acquireTokenPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});token=r.accessToken}return token}
 function signOut(){msal.logoutPopup()}
-async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];document.getElementById('userAvatar').textContent=init(name);await loadSiteUsers();await loadPolicies();startAutoRefresh()}
+async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('appHeader').classList.add('visible');const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];document.getElementById('userAvatar').textContent=init(name);await loadSiteUsers();await loadPolicies();startAutoRefresh()}
 async function graph(url,opts={}){if(!token)await getToken();const r=await fetch(`https://graph.microsoft.com/v1.0${url}`,{...opts,headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}});if(!r.ok){const t=await r.text();console.error('Graph:',r.status,t);throw new Error(t)}return r.json()}
 
 async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/User%20Information%20List/items?$expand=fields&$top=500`);siteUsers=r.value.map(u=>({id:String(u.fields.id),name:u.fields.Title||'',email:u.fields.EMail||''})).filter(u=>u.name);const email=user.username?.toLowerCase();const me=siteUsers.find(u=>u.email?.toLowerCase()===email);if(me)currentUserId=me.id;console.log('Current user:',currentUserId)}catch(e){console.log('Site users error:',e.message)}}
