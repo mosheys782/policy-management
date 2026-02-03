@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 51 - Clean version, only header sticky -->
+<!-- Version 52 - Added Due Today card, reordered cards (Unassigned after In Progress) -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -30,12 +30,13 @@
         .user-badge{display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.15)}
         .user-badge .avatar{width:32px;height:32px;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
         .main{padding:24px 32px;max-width:1800px;margin:0 auto}
-        .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:20px}
+        .stats{display:grid;grid-template-columns:repeat(7,1fr);gap:16px;margin-bottom:20px}
         .stat{padding:20px;border-radius:12px;cursor:pointer;transition:all 0.2s;border:1px solid #e5e7eb;background:#fff}
         .stat:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.08)}
         .stat .num{font-size:32px;font-weight:700;margin-bottom:4px}
         .stat .label{font-size:12px;font-weight:500;color:#64748b}
         .stat.red{border-left:4px solid #ef4444}.stat.red .num{color:#ef4444}
+        .stat.yellow{border-left:4px solid #eab308}.stat.yellow .num{color:#eab308}
         .stat.orange{border-left:4px solid #f97316}.stat.orange .num{color:#f97316}
         .stat.gray{border-left:4px solid #6b7280}.stat.gray .num{color:#6b7280}
         .stat.teal{border-left:4px solid #14b8a6}.stat.teal .num{color:#14b8a6}
@@ -157,7 +158,8 @@
         .toast.show{display:block}
         .toast.ok{background:#22c55e}
         .toast.err{background:#ef4444}
-        @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
+        @media(max-width:1400px){.stats{grid-template-columns:repeat(4,1fr)}}
+        @media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}}
     </style>
 </head>
 <body>
@@ -167,11 +169,12 @@
         <main class="main">
             <div class="stats">
                 <div class="stat red" onclick="filterStat('pastDue')"><div class="num" id="sPastDue">0</div><div class="label">Past Due</div></div>
+                <div class="stat yellow" onclick="filterStat('dueToday')"><div class="num" id="sDueToday">0</div><div class="label">Due Today</div></div>
                 <div class="stat orange" onclick="filterStat('dueWeek')"><div class="num" id="sDueWeek">0</div><div class="label">Due This Week</div></div>
                 <div class="stat gray" onclick="filterStat('progress')"><div class="num" id="sProgress">0</div><div class="label">In Progress</div></div>
+                <div class="stat green" onclick="filterStat('unassign')"><div class="num" id="sUnassign">0</div><div class="label">Unassigned</div></div>
                 <div class="stat teal" onclick="filterStat('billing')"><div class="num" id="sBilling">0</div><div class="label">In Billing</div></div>
                 <div class="stat rose" onclick="filterStat('billPast')"><div class="num" id="sBillPast">0</div><div class="label">Billing Past Due</div></div>
-                <div class="stat green" onclick="filterStat('unassign')"><div class="num" id="sUnassign">0</div><div class="label">Unassigned</div></div>
             </div>
             <div class="tabs">
                 <div class="tab-row">
@@ -402,6 +405,15 @@ function filter(){
                     badgeDate.setDate(badgeDate.getDate()-1);
                 }
                 if(!isPol||!badgeDate||badgeDate<today||badgeDate>=week)return false;
+            }
+            if(statFilter==='dueToday'){
+                const tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
+                let badgeDate=getDue(p);
+                if(badgeDate && p.TransType!=='New Business'){
+                    badgeDate=new Date(badgeDate);
+                    badgeDate.setDate(badgeDate.getDate()-1);
+                }
+                if(!isPol||!badgeDate||badgeDate<today||badgeDate>=tomorrow)return false;
             }
             if(statFilter==='progress'){
                 if(!isPol||!PROGRESS.includes(p.Status))return false;
@@ -648,9 +660,10 @@ async function setGridAssigneeDD(policyId,userId,userName,isSiteUser){
 
 function updateStats(){
     const today=new Date();today.setHours(0,0,0,0);
+    const tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
     const week=new Date(today);week.setDate(week.getDate()+7);
     const f90=new Date(today);f90.setDate(f90.getDate()+90);
-    let pd=0,dw=0,ip=0,bl=0,bp=0,ua=0;
+    let pd=0,dt=0,dw=0,ip=0,bl=0,bp=0,ua=0;
     policies.forEach(p=>{
         if(p.Archived)return;
         const exp=parseLocalDate(p.ExpDate);
@@ -665,6 +678,7 @@ function updateStats(){
                 polBadgeDate.setDate(polBadgeDate.getDate()-1);
             }
             if(polBadgeDate&&polBadgeDate<today)pd++;
+            if(polBadgeDate&&polBadgeDate>=today&&polBadgeDate<tomorrow)dt++;
             if(polBadgeDate&&polBadgeDate>=today&&polBadgeDate<week)dw++;
         }
         // In progress: ONLY in PROGRESS statuses
@@ -679,6 +693,7 @@ function updateStats(){
         if(!p.AssignedId&&exp&&exp>=today&&exp<=f90)ua++;
     });
     document.getElementById('sPastDue').textContent=pd;
+    document.getElementById('sDueToday').textContent=dt;
     document.getElementById('sDueWeek').textContent=dw;
     document.getElementById('sProgress').textContent=ip;
     document.getElementById('sBilling').textContent=bl;
