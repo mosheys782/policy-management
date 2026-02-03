@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<!-- Version 55 - Added page size selector (10/50/100) with user preference saved -->
+<!-- Version 56 - Added auto-refresh version check -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Policy Management</title>
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -272,12 +275,39 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint</footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v56</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
+// App Version - increment this when deploying updates
+const APP_VERSION = 56;
+
+// Version check - runs on page load to detect updates
+(function checkForUpdates(){
+    const lastCheck = sessionStorage.getItem('pm_version_checked');
+    const now = Date.now();
+    // Only check once per session or every 5 minutes
+    if(lastCheck && (now - parseInt(lastCheck)) < 300000) return;
+    sessionStorage.setItem('pm_version_checked', now);
+    
+    fetch(location.href + '?_=' + now, {cache: 'no-store'})
+        .then(r => r.text())
+        .then(html => {
+            const match = html.match(/const APP_VERSION\s*=\s*(\d+)/);
+            if(match){
+                const serverVersion = parseInt(match[1]);
+                if(serverVersion > APP_VERSION){
+                    console.log('New version available:', serverVersion, '(current:', APP_VERSION + ')');
+                    // Force refresh to get new version
+                    location.reload(true);
+                }
+            }
+        })
+        .catch(e => console.log('Version check failed:', e));
+})();
+
 const CONFIG={clientId:'d2dbeace-3b37-4da9-85db-0bb4ca328f68',tenantId:'8b20613e-54c4-43a3-af63-92cdbf260edb',siteId:'9159d942-f331-4ac9-bd64-d609d016f38a',listId:'eb615fe6-0253-45b6-bab1-d436c553e5df',siteHost:'gancfried.sharepoint.com'};
 const STATUSES=['Not Started','In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received','Bound-Direct Bill','Bound','Bound-New carrier','Lost','Replaced'];
 const BILL_STATUSES=['Not Started','Invoice Sent','Payment Received','Closed'];
@@ -294,7 +324,7 @@ document.addEventListener('DOMContentLoaded',async()=>{msal=new window.msal.Publ
 async function signIn(){try{const r=await msal.loginPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});user=r.account;token=r.accessToken;showApp()}catch(e){console.error(e);toast('Login failed','err')}}
 async function getToken(){try{const r=await msal.acquireTokenSilent({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All'],account:user});token=r.accessToken}catch(e){const r=await msal.acquireTokenPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});token=r.accessToken}return token}
 function signOut(){msal.logoutPopup()}
-async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('appHeader').classList.add('visible');const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];loadPageSizePreference();await loadSiteUsers();await loadPolicies();startAutoRefresh()}
+async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('appHeader').classList.add('visible');const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];document.getElementById('appVersion').textContent='v'+APP_VERSION;loadPageSizePreference();await loadSiteUsers();await loadPolicies();startAutoRefresh()}
 
 function loadPageSizePreference(){
     const userKey=user.username||user.name||'default';
@@ -360,6 +390,25 @@ async function refreshData(silent=false){
 function startAutoRefresh(){
     if(refreshInterval)clearInterval(refreshInterval);
     refreshInterval=setInterval(()=>refreshData(true),REFRESH_INTERVAL);
+    // Check for updates every 10 minutes
+    setInterval(checkAppVersion, 600000);
+}
+
+function checkAppVersion(){
+    fetch(location.href + '?_=' + Date.now(), {cache: 'no-store'})
+        .then(r => r.text())
+        .then(html => {
+            const match = html.match(/const APP_VERSION\s*=\s*(\d+)/);
+            if(match){
+                const serverVersion = parseInt(match[1]);
+                if(serverVersion > APP_VERSION){
+                    if(confirm('A new version is available! Click OK to refresh and get the latest updates.')){
+                        location.reload(true);
+                    }
+                }
+            }
+        })
+        .catch(e => console.log('Version check failed:', e));
 }
 
 // Refresh when tab becomes visible after being hidden
@@ -368,6 +417,7 @@ document.addEventListener('visibilitychange',()=>{
         const timeSinceRefresh=Date.now()-lastRefresh;
         if(timeSinceRefresh>VISIBILITY_THRESHOLD){
             refreshData(true);
+            checkAppVersion();
         }
     }
 });
