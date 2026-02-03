@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 54 - Added clear filters button and active filters display -->
+<!-- Version 55 - Added page size selector (10/50/100) with user preference saved -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -158,6 +158,9 @@
         
         /* Pagination */
         .pagination{padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;background:#fff;font-size:13px;color:#6b7280}
+        .pagination-left{display:flex;align-items:center;gap:16px}
+        .page-size-select{display:flex;align-items:center;gap:8px;font-size:13px;color:#6b7280}
+        .page-size-select select{padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;cursor:pointer;background:#fff}
         .page-btn{padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;transition:all 0.15s}
         .page-btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
         .page-btn:hover:not(.active):not(:disabled){border-color:#3b82f6;color:#3b82f6}
@@ -260,12 +263,12 @@
                 <div class="active-filters" id="activeFilters"></div>
             </div>
             <div class="grid" id="gridContainer">
-                <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb"><div id="pageInfoTop"></div><div id="pageBtnsTop"></div></div>
+                <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb"><div class="pagination-left"><div id="pageInfoTop"></div><div class="page-size-select">Show <select id="pageSizeTop" onchange="changePageSize(this.value)"><option value="10">10</option><option value="50">50</option><option value="100">100</option></select> per page</div></div><div id="pageBtnsTop"></div></div>
                 <table class="grid-table" id="gridTable">
                     <thead id="gridHeader"><tr><th>POLICY</th><th>AMS</th><th>DUE DATE</th><th>STATUS</th><th>ASSIGNED TO</th><th>EFF DATE</th><th class="premium-col">PREMIUM</th><th></th></tr></thead>
                     <tbody id="gridBody"><tr><td colspan="8" class="loading"><div class="spinner"></div>Loading policies...</td></tr></tbody>
                 </table>
-                <div class="pagination" id="pagination" style="display:none"><div id="pageInfo"></div><div id="pageBtns"></div></div>
+                <div class="pagination" id="pagination" style="display:none"><div class="pagination-left"><div id="pageInfo"></div><div class="page-size-select">Show <select id="pageSize" onchange="changePageSize(this.value)"><option value="10">10</option><option value="50">50</option><option value="100">100</option></select> per page</div></div><div id="pageBtns"></div></div>
             </div>
         </main>
         
@@ -281,7 +284,7 @@ const BILL_STATUSES=['Not Started','Invoice Sent','Payment Received','Closed'];
 const COLORS={'Not Started':'#6b7280','In-Progress':'#2563eb','Pending – Quote':'#7c3aed','Pending – Customer':'#d97706','Pending – Underwriting':'#db2777','Quote-Received':'#059669','Bound-Direct Bill':'#d97706','Bound':'#16a34a','Bound-New carrier':'#0891b2','Lost':'#dc2626','Replaced':'#6b7280','Invoice Sent':'#d97706','Payment Received':'#16a34a','Closed':'#6b7280'};
 const EXIT=['Bound','Bound-Direct Bill','Bound-New carrier','Lost','Replaced'],PROGRESS=['In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received'],ACOLORS=['#dc2626','#ea580c','#d97706','#16a34a','#0891b2','#2563eb','#7c3aed','#c026d3','#059669','#0d9488','#6366f1','#8b5cf6','#ec4899','#f43f5e','#84cc16','#06b6d4'];
 const msalConfig={auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:location.origin},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}};
-let msal,user,token,currentUserId=null,policies=[],filtered=[],siteUsers=[],tab='myPolicy',selected=null,page=1,PAGE_SIZE=50,statFilter=null;
+let msal,user,token,currentUserId=null,policies=[],filtered=[],siteUsers=[],tab='myPolicy',selected=null,page=1,PAGE_SIZE=10,statFilter=null;
 const F_ASSIGNED='AssignedTo0LookupId',F_NOTES='NextStep';
 
 // HTML escape function to prevent template literal breaking
@@ -291,7 +294,28 @@ document.addEventListener('DOMContentLoaded',async()=>{msal=new window.msal.Publ
 async function signIn(){try{const r=await msal.loginPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});user=r.account;token=r.accessToken;showApp()}catch(e){console.error(e);toast('Login failed','err')}}
 async function getToken(){try{const r=await msal.acquireTokenSilent({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All'],account:user});token=r.accessToken}catch(e){const r=await msal.acquireTokenPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});token=r.accessToken}return token}
 function signOut(){msal.logoutPopup()}
-async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('appHeader').classList.add('visible');const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];await loadSiteUsers();await loadPolicies();startAutoRefresh()}
+async function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('appHeader').classList.add('visible');const name=user.name||user.username||'User';document.getElementById('userName').textContent=name.split(' ')[0];loadPageSizePreference();await loadSiteUsers();await loadPolicies();startAutoRefresh()}
+
+function loadPageSizePreference(){
+    const userKey=user.username||user.name||'default';
+    const saved=localStorage.getItem('pm_pageSize_'+userKey);
+    if(saved&&[10,50,100].includes(parseInt(saved))){
+        PAGE_SIZE=parseInt(saved);
+    }
+    document.getElementById('pageSize').value=PAGE_SIZE;
+    document.getElementById('pageSizeTop').value=PAGE_SIZE;
+}
+
+function changePageSize(size){
+    PAGE_SIZE=parseInt(size);
+    document.getElementById('pageSize').value=size;
+    document.getElementById('pageSizeTop').value=size;
+    const userKey=user.username||user.name||'default';
+    localStorage.setItem('pm_pageSize_'+userKey,size);
+    page=1;
+    render();
+    toast('Showing '+size+' items per page','ok');
+}
 async function graph(url,opts={}){if(!token)await getToken();const r=await fetch(`https://graph.microsoft.com/v1.0${url}`,{...opts,headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}});if(!r.ok){const t=await r.text();console.error('Graph:',r.status,t);throw new Error(t)}return r.json()}
 
 async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/User%20Information%20List/items?$expand=fields&$top=500`);siteUsers=r.value.map(u=>({id:String(u.fields.id),name:u.fields.Title||'',email:u.fields.EMail||''})).filter(u=>u.name);const email=user.username?.toLowerCase();const me=siteUsers.find(u=>u.email?.toLowerCase()===email);if(me)currentUserId=me.id;console.log('Current user:',currentUserId)}catch(e){console.log('Site users error:',e.message)}}
@@ -670,11 +694,17 @@ function render(){
     
     const pag=document.getElementById('pagination');
     const pagTop=document.getElementById('paginationTop');
-    if(pages>1){
+    // Sync page size selects
+    document.getElementById('pageSize').value=PAGE_SIZE;
+    document.getElementById('pageSizeTop').value=PAGE_SIZE;
+    if(total>0){
         const pageInfoText=`Showing ${start+1}-${Math.min(start+PAGE_SIZE,total)} of ${total}`;
-        let btns=`<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>← Prev</button>`;
-        for(let i=Math.max(1,page-2);i<=Math.min(pages,page+2);i++)btns+=`<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
-        btns+=`<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>Next →</button>`;
+        let btns='';
+        if(pages>1){
+            btns=`<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>← Prev</button>`;
+            for(let i=Math.max(1,page-2);i<=Math.min(pages,page+2);i++)btns+=`<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
+            btns+=`<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>Next →</button>`;
+        }
         
         pag.style.display='flex';
         document.getElementById('pageInfo').textContent=pageInfoText;
