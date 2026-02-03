@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 53 - Redesign to match Producer License Manager style -->
+<!-- Version 54 - Added clear filters button and active filters display -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -67,6 +67,15 @@
         .filters select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
         .filters label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:#475569}
         .filters label input{width:16px;height:16px;accent-color:#3b82f6}
+        .clear-filters-btn{padding:8px 14px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-size:13px;cursor:pointer;transition:all 0.15s;display:none}
+        .clear-filters-btn:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
+        .clear-filters-btn.visible{display:inline-flex;align-items:center;gap:6px}
+        .active-filters{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px;background:#eff6ff;border-top:1px solid #bfdbfe;align-items:center}
+        .active-filters:empty{display:none}
+        .active-filters-label{font-size:12px;color:#3b82f6;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+        .filter-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#fff;border:1px solid #bfdbfe;border-radius:6px;font-size:12px;color:#1e40af}
+        .filter-tag .remove{cursor:pointer;color:#64748b;font-weight:bold}
+        .filter-tag .remove:hover{color:#dc2626}
         
         /* Grid/Table */
         .grid{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);overflow:hidden}
@@ -246,7 +255,9 @@
                     <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
                     <label><input type="checkbox" id="fUnassigned" onchange="filter()"> Unassigned Only</label>
                     <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
+                    <button class="clear-filters-btn" id="clearFiltersBtn" onclick="clearFilters()">✕ Clear Filters</button>
                 </div>
+                <div class="active-filters" id="activeFilters"></div>
             </div>
             <div class="grid" id="gridContainer">
                 <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb"><div id="pageInfoTop"></div><div id="pageBtnsTop"></div></div>
@@ -497,7 +508,74 @@ function filter(){
         return true;
     });
     filtered.sort((a,b)=>{const dA=getDue(a),dB=getDue(b);if(!dA)return 1;if(!dB)return -1;return dA-dB});
-    page=1;render();updateTabCounts();
+    page=1;render();updateTabCounts();updateActiveFilters();
+}
+
+function clearFilters(){
+    document.getElementById('search').value='';
+    document.getElementById('fStatus').value='';
+    document.getElementById('fAssignee').value='';
+    document.getElementById('fType').value='';
+    document.getElementById('fTransType').value='';
+    document.getElementById('fBizType').value='';
+    document.getElementById('fUnassigned').checked=false;
+    document.getElementById('fShowAll').checked=false;
+    statFilter=null;
+    filter();
+}
+
+function removeFilter(filterType){
+    if(filterType==='search')document.getElementById('search').value='';
+    else if(filterType==='status')document.getElementById('fStatus').value='';
+    else if(filterType==='assignee')document.getElementById('fAssignee').value='';
+    else if(filterType==='type')document.getElementById('fType').value='';
+    else if(filterType==='transType')document.getElementById('fTransType').value='';
+    else if(filterType==='bizType')document.getElementById('fBizType').value='';
+    else if(filterType==='unassigned')document.getElementById('fUnassigned').checked=false;
+    else if(filterType==='showAll')document.getElementById('fShowAll').checked=false;
+    else if(filterType==='stat')statFilter=null;
+    filter();
+}
+
+function updateActiveFilters(){
+    const container=document.getElementById('activeFilters');
+    const clearBtn=document.getElementById('clearFiltersBtn');
+    const tags=[];
+    
+    const search=document.getElementById('search').value;
+    const statusF=document.getElementById('fStatus').value;
+    const assigneeF=document.getElementById('fAssignee').value;
+    const typeF=document.getElementById('fType').value;
+    const transTypeF=document.getElementById('fTransType').value;
+    const bizTypeF=document.getElementById('fBizType').value;
+    const unassignedF=document.getElementById('fUnassigned').checked;
+    const showAllF=document.getElementById('fShowAll').checked;
+    
+    if(search)tags.push({type:'search',label:`Search: "${search}"`});
+    if(statFilter){
+        const statLabels={'pastDue':'Past Due','dueToday':'Due Today','dueWeek':'Due This Week','progress':'In Progress','unassign':'Unassigned','billing':'In Billing','billPast':'Billing Past Due'};
+        tags.push({type:'stat',label:`📊 ${statLabels[statFilter]||statFilter}`});
+    }
+    if(statusF)tags.push({type:'status',label:`Status: ${statusF}`});
+    if(assigneeF){
+        const assigneeName=document.getElementById('fAssignee').options[document.getElementById('fAssignee').selectedIndex].text;
+        tags.push({type:'assignee',label:`Assignee: ${assigneeName}`});
+    }
+    if(typeF)tags.push({type:'type',label:`Type: ${typeF}`});
+    if(transTypeF)tags.push({type:'transType',label:`Transaction: ${transTypeF}`});
+    if(bizTypeF)tags.push({type:'bizType',label:`Business: ${bizTypeF==='CL'?'Commercial':'Personal'}`});
+    if(unassignedF)tags.push({type:'unassigned',label:'Unassigned Only'});
+    if(showAllF)tags.push({type:'showAll',label:'All Dates'});
+    
+    if(tags.length>0){
+        container.innerHTML='<span class="active-filters-label">Active Filters:</span>'+tags.map(t=>
+            `<span class="filter-tag">${esc(t.label)}<span class="remove" onclick="removeFilter('${t.type}')">×</span></span>`
+        ).join('');
+        clearBtn.classList.add('visible');
+    }else{
+        container.innerHTML='';
+        clearBtn.classList.remove('visible');
+    }
 }
 
 function render(){
