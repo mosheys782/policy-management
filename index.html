@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 47 - Force column headers with inline styles -->
+<!-- Version 51 - Clean version, only header sticky -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,7 +19,6 @@
         .login-btn:hover{background:#1d4ed8}
         .header{background:#2563eb;color:#fff;padding:16px 32px;display:none;justify-content:space-between;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,0.15);height:64px;position:-webkit-sticky;position:sticky;top:0;z-index:9999}
         .header.visible{display:flex}
-        .sticky-section{position:-webkit-sticky;position:sticky;top:64px;z-index:100;background:#fafbfc;padding:24px 0 20px 0;box-shadow:0 2px 4px rgba(0,0,0,0.03)}
         .header h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
         .header-right{display:flex;gap:12px;align-items:center}
         .search-box{position:relative}
@@ -56,11 +55,11 @@
         .filters select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
         .filters label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:#475569;font-weight:400}
         .filters label input{width:16px;height:16px;accent-color:#3b82f6}
-        .grid{background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #e5e7eb;overflow:hidden;position:relative;z-index:1}
+        .grid{background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #e5e7eb;overflow:hidden}
         .grid-table{width:100%;border-collapse:collapse}
         .grid-table thead{display:table-header-group}
         .grid-table thead tr{display:table-row}
-        .grid-table th{display:table-cell;padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.5px;text-align:center;white-space:nowrap;border-bottom:2px solid #e2e8f0}
+        .grid-table th{padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.5px;text-align:center;white-space:nowrap;border-bottom:2px solid #e2e8f0}
         .grid-table th:first-child{text-align:left;padding-left:24px}
         .grid-table th:last-child{padding-right:24px}
         .grid-table th.premium-col{text-align:right}
@@ -193,10 +192,10 @@
                     <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
                 </div>
             </div>
-            <div class="grid">
-                <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb;border-radius:16px 16px 0 0;background:#fff"><div id="pageInfoTop"></div><div id="pageBtnsTop"></div></div>
+            <div class="grid" id="gridContainer">
+                <div class="pagination" id="paginationTop" style="display:none;border-bottom:1px solid #e5e7eb"><div id="pageInfoTop"></div><div id="pageBtnsTop"></div></div>
                 <table class="grid-table" id="gridTable">
-                    <thead id="gridHeader"><tr style="background:#f1f5f9"><th style="padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;text-align:left;padding-left:24px">POLICY</th><th style="padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase">AMS</th><th style="padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase">DUE DATE</th><th style="padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase">STATUS</th><th style="padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase">ASSIGNED TO</th><th style="padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase">EFF DATE</th><th style="padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;text-align:right">PREMIUM</th><th style="padding:14px 16px;background:#f1f5f9"></th></tr></thead>
+                    <thead id="gridHeader"><tr><th>POLICY</th><th>AMS</th><th>DUE DATE</th><th>STATUS</th><th>ASSIGNED TO</th><th>EFF DATE</th><th class="premium-col">PREMIUM</th><th></th></tr></thead>
                     <tbody id="gridBody"><tr><td colspan="8" class="loading"><div class="spinner"></div>Loading policies...</td></tr></tbody>
                 </table>
                 <div class="pagination" id="pagination" style="display:none"><div id="pageInfo"></div><div id="pageBtns"></div></div>
@@ -445,11 +444,10 @@ function render(){
     
     // Update header with table row
     const header=document.getElementById('gridHeader');
-    const thStyle='padding:14px 16px;background:#f1f5f9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;text-align:center;white-space:nowrap;border-bottom:2px solid #e2e8f0';
     if(isBillingTab){
-        header.innerHTML=`<tr style="background:#f1f5f9"><th style="${thStyle};text-align:left;padding-left:24px">POLICY</th><th style="${thStyle}">AMS</th><th style="${thStyle}">DUE DATE</th><th style="${thStyle}">POLICY STATUS</th><th style="${thStyle}">BILLING STATUS</th><th style="${thStyle}">ASSIGNED TO</th><th style="${thStyle}">EFF DATE</th><th style="${thStyle};text-align:right">PREMIUM</th><th style="${thStyle}"></th></tr>`;
+        header.innerHTML='<tr><th>POLICY</th><th>AMS</th><th>DUE DATE</th><th>POLICY STATUS</th><th>BILLING STATUS</th><th>ASSIGNED TO</th><th>EFF DATE</th><th class="premium-col">PREMIUM</th><th></th></tr>';
     }else{
-        header.innerHTML=`<tr style="background:#f1f5f9"><th style="${thStyle};text-align:left;padding-left:24px">POLICY</th><th style="${thStyle}">AMS</th><th style="${thStyle}">DUE DATE</th><th style="${thStyle}">STATUS</th><th style="${thStyle}">ASSIGNED TO</th><th style="${thStyle}">EFF DATE</th><th style="${thStyle};text-align:right">PREMIUM</th><th style="${thStyle}"></th></tr>`;
+        header.innerHTML='<tr><th>POLICY</th><th>AMS</th><th>DUE DATE</th><th>STATUS</th><th>ASSIGNED TO</th><th>EFF DATE</th><th class="premium-col">PREMIUM</th><th></th></tr>';
     }
     
     if(!items.length){body.innerHTML='<tr><td colspan="'+(isBillingTab?9:8)+'" style="text-align:center;padding:40px;color:#6b7280">No policies found</td></tr>';document.getElementById('pagination').style.display='none';document.getElementById('paginationTop').style.display='none';return}
