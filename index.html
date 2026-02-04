@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 57 - Added one-time force refresh mechanism -->
+<!-- Version 59 - Panel only opens from action button, not row click -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <title>Policy Management</title>
     <script>
     // ONE-TIME FORCE REFRESH - Change this number to force all users to refresh
-    var FORCE_REFRESH_VERSION = 57;
+    var FORCE_REFRESH_VERSION = 59;
     (function(){
         var key = 'pm_force_refresh_v';
         var lastForced = localStorage.getItem(key);
@@ -111,7 +111,6 @@
         .grid-table tbody tr{transition:all 0.15s ease}
         .grid-table tbody tr:nth-child(even){background:#f9fafb}
         .grid-table tbody tr:hover td{background:#f1f5f9}
-        .grid-table tr{cursor:pointer}
         
         /* Policy cell */
         .policy-cell{display:flex;gap:14px;align-items:flex-start;min-width:0;text-align:left}
@@ -290,14 +289,14 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v57</span></footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v59</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
 // App Version - increment this when deploying updates
-const APP_VERSION = 57;
+const APP_VERSION = 59;
 
 // Version check - runs on page load to detect updates
 (function checkForUpdates(){
@@ -361,7 +360,23 @@ function changePageSize(size){
     render();
     toast('Showing '+size+' items per page','ok');
 }
-async function graph(url,opts={}){if(!token)await getToken();const r=await fetch(`https://graph.microsoft.com/v1.0${url}`,{...opts,headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}});if(!r.ok){const t=await r.text();console.error('Graph:',r.status,t);throw new Error(t)}return r.json()}
+async function graph(url,opts={},retry=true){
+    if(!token)await getToken();
+    const r=await fetch(`https://graph.microsoft.com/v1.0${url}`,{...opts,headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}});
+    if(!r.ok){
+        // If 401 Unauthorized, token likely expired - get new token and retry once
+        if(r.status===401 && retry){
+            console.log('Token expired, refreshing...');
+            token=null;
+            await getToken();
+            return graph(url,opts,false);
+        }
+        const t=await r.text();
+        console.error('Graph:',r.status,t);
+        throw new Error(t);
+    }
+    return r.json();
+}
 
 async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/User%20Information%20List/items?$expand=fields&$top=500`);siteUsers=r.value.map(u=>({id:String(u.fields.id),name:u.fields.Title||'',email:u.fields.EMail||''})).filter(u=>u.name);const email=user.username?.toLowerCase();const me=siteUsers.find(u=>u.email?.toLowerCase()===email);if(me)currentUserId=me.id;console.log('Current user:',currentUserId)}catch(e){console.log('Site users error:',e.message)}}
 
@@ -427,9 +442,23 @@ function checkAppVersion(){
 }
 
 // Refresh when tab becomes visible after being hidden
-document.addEventListener('visibilitychange',()=>{
+document.addEventListener('visibilitychange',async()=>{
     if(document.visibilityState==='visible'){
         const timeSinceRefresh=Date.now()-lastRefresh;
+        // If idle for more than 5 minutes, force fresh token
+        if(timeSinceRefresh > 5*60*1000){
+            console.log('Long idle detected, forcing token refresh...');
+            token=null;
+            try{
+                await getToken();
+            }catch(e){
+                console.error('Token refresh failed:', e);
+                // If token refresh fails, might need to re-login
+                toast('Session may have expired. Refreshing...','');
+                setTimeout(()=>location.reload(),1500);
+                return;
+            }
+        }
         if(timeSinceRefresh>VISIBILITY_THRESHOLD){
             refreshData(true);
             checkAppVersion();
@@ -713,7 +742,7 @@ function render(){
         const transLabel = p.TransType==='New Business'?'NEW BUSINESS':'RENEWAL';
         const badgeClass = p.TransType==='New Business'?'new':'renewal';
         
-        const policyCell=`<td class="policy-cell" onclick="openPanel('${p.id}')">
+        const policyCell=`<td class="policy-cell">
             <div class="policy-icon" style="background:${color}15;color:${color}">${icon}</div>
             <div class="policy-info">
                 <span class="type-badge ${badgeClass}">${transLabel}</span>
@@ -724,7 +753,7 @@ function render(){
             </div>
         </td>`;
         
-        const amsCell=`<td class="ams-cell">${p.AMS360Link?`<a href="${esc(p.AMS360Link)}" target="_blank" onclick="event.stopPropagation()" title="Open in AMS360" class="action-btn ams-btn" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;text-decoration:none">🔗</a>`:''}</td>`;
+        const amsCell=`<td class="ams-cell">${p.AMS360Link?`<a href="${esc(p.AMS360Link)}" target="_blank" title="Open in AMS360" class="action-btn ams-btn" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;text-decoration:none">🔗</a>`:''}</td>`;
         
         const dueCell=`<td class="due-cell">
             ${badge?`<div class="due-badge ${badge.cls}">${badge.text}</div>`:''}
@@ -732,15 +761,15 @@ function render(){
         </td>`;
         
         const statusCell=`<td class="status-cell">
-            <div class="status-badge" style="background:${color}15;color:${color}" onclick="event.stopPropagation();toggleStatus('${p.id}',false,this)">${p.Status}</div>
+            <div class="status-badge" style="background:${color}15;color:${color}" onclick="toggleStatus('${p.id}',false,this)">${p.Status}</div>
         </td>`;
         
         const billStatusCell=`<td class="status-cell">
-            <div class="status-badge" style="background:${billColor}15;color:${billColor}" onclick="event.stopPropagation();toggleStatus('${p.id}',true,this)">${p.BillStatus}</div>
+            <div class="status-badge" style="background:${billColor}15;color:${billColor}" onclick="toggleStatus('${p.id}',true,this)">${p.BillStatus}</div>
         </td>`;
         
         const assigneeCell=`<td class="assignee-cell">
-            <div class="assignee-badge" style="background:${ac}15;color:${ac}" onclick="event.stopPropagation();toggleAssignee('${p.id}',this)">
+            <div class="assignee-badge" style="background:${ac}15;color:${ac}" onclick="toggleAssignee('${p.id}',this)">
                 <div class="init" style="background:${ac}">${init(aName)}</div>
                 <span class="name">${esc(aName)}</span>
             </div>
@@ -748,12 +777,12 @@ function render(){
         
         const effCell=`<td class="date-cell">${effDate?fmtShort(effDate):'-'}</td>`;
         const premiumCell=`<td class="premium-cell">${premiumHtml}</td>`;
-        const btnCell=`<td><button class="action-btn" onclick="event.stopPropagation();openPanel('${p.id}')" title="View Details">📋</button></td>`;
+        const btnCell=`<td><button class="action-btn" onclick="openPanel('${p.id}')" title="View Details">📋</button></td>`;
         
         if(isBillingTab){
-            return `<tr onclick="openPanel('${p.id}')">${policyCell}${amsCell}${dueCell}${statusCell}${billStatusCell}${assigneeCell}${effCell}${premiumCell}${btnCell}</tr>`;
+            return `<tr>${policyCell}${amsCell}${dueCell}${statusCell}${billStatusCell}${assigneeCell}${effCell}${premiumCell}${btnCell}</tr>`;
         }else{
-            return `<tr onclick="openPanel('${p.id}')">${policyCell}${amsCell}${dueCell}${statusCell}${assigneeCell}${effCell}${premiumCell}${btnCell}</tr>`;
+            return `<tr>${policyCell}${amsCell}${dueCell}${statusCell}${assigneeCell}${effCell}${premiumCell}${btnCell}</tr>`;
         }
     }).join('');
     
