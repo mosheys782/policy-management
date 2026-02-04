@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 59 - Panel only opens from action button, not row click -->
+<!-- Version 60 - Stay on current page when changing status or assignee -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <title>Policy Management</title>
     <script>
     // ONE-TIME FORCE REFRESH - Change this number to force all users to refresh
-    var FORCE_REFRESH_VERSION = 59;
+    var FORCE_REFRESH_VERSION = 60;
     (function(){
         var key = 'pm_force_refresh_v';
         var lastForced = localStorage.getItem(key);
@@ -289,14 +289,14 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v59</span></footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v60</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
 // App Version - increment this when deploying updates
-const APP_VERSION = 59;
+const APP_VERSION = 60;
 
 // Version check - runs on page load to detect updates
 (function checkForUpdates(){
@@ -521,7 +521,7 @@ function acolor(id,name){
     return ACOLORS[Math.abs(Number(id)||0)%ACOLORS.length];
 }
 
-function filter(){
+function filter(preservePage=false){
     const search=document.getElementById('search').value.toLowerCase();
     const statusF=document.getElementById('fStatus').value;
     const assigneeF=document.getElementById('fAssignee').value;
@@ -626,7 +626,8 @@ function filter(){
         return true;
     });
     filtered.sort((a,b)=>{const dA=getDue(a),dB=getDue(b);if(!dA)return 1;if(!dB)return -1;return dA-dB});
-    page=1;render();updateTabCounts();updateActiveFilters();
+    if(!preservePage){page=1;}else{const maxPage=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));if(page>maxPage)page=maxPage;}
+    render();updateTabCounts();updateActiveFilters();
 }
 
 function clearFilters(){
@@ -857,7 +858,7 @@ async function setStatus(id,status,isBilling){
             if(shouldArchive)p.Archived=true;
         }
         toast(shouldArchive?'Status updated & Archived':'Status updated','ok');
-        filter();updateStats();
+        filter(true);updateStats();
     }catch(e){toast('Update failed','err')}
 }
 
@@ -912,7 +913,7 @@ async function setGridAssigneeDD(policyId,userId,userName,isSiteUser){
         const p=policies.find(x=>x.id===policyId);
         if(p){p.AssignedId=userId||null;p.AssignedName=userName||null}
         toast('Assignee updated','ok');
-        buildAssigneeFilter();filter();updateStats();
+        buildAssigneeFilter();filter(true);updateStats();
     }catch(e){console.error(e);toast('Update failed','err')}
 }
 
