@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 60 - Stay on current page when changing status or assignee -->
+<!-- Version 61 - Stay on current page when changing status or assignee -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <title>Policy Management</title>
     <script>
     // ONE-TIME FORCE REFRESH - Change this number to force all users to refresh
-    var FORCE_REFRESH_VERSION = 60;
+    var FORCE_REFRESH_VERSION = 61;
     (function(){
         var key = 'pm_force_refresh_v';
         var lastForced = localStorage.getItem(key);
@@ -289,14 +289,14 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v60</span></footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v61</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
 // App Version - increment this when deploying updates
-const APP_VERSION = 60;
+const APP_VERSION = 61;
 
 // Version check - runs on page load to detect updates
 (function checkForUpdates(){
@@ -387,10 +387,14 @@ function buildAssigneeFilter(){const names=new Map();policies.forEach(p=>{if(p.A
 // Auto-refresh functionality
 let lastRefresh=Date.now();
 let refreshInterval=null;
+let isRefreshing=false; // Guard against concurrent refreshes
 const REFRESH_INTERVAL=3*60*1000; // 3 minutes
 const VISIBILITY_THRESHOLD=60*1000; // 1 minute
 
 async function refreshData(silent=false){
+    // Prevent concurrent refreshes which cause duplicate data
+    if(isRefreshing){console.log('Refresh already in progress, skipping');return}
+    isRefreshing=true;
     if(!silent)toast('Refreshing...','');
     try{
         const oldPolicies=policies;
@@ -414,14 +418,19 @@ async function refreshData(silent=false){
     }catch(e){
         console.error('Refresh error:',e);
         if(!silent)toast('Refresh failed','err');
+    }finally{
+        isRefreshing=false;
     }
 }
 
 function startAutoRefresh(){
     if(refreshInterval)clearInterval(refreshInterval);
     refreshInterval=setInterval(()=>refreshData(true),REFRESH_INTERVAL);
-    // Check for updates every 10 minutes
-    setInterval(checkAppVersion, 600000);
+    // Check for updates every 10 minutes (only start once)
+    if(!window._versionCheckStarted){
+        window._versionCheckStarted=true;
+        setInterval(checkAppVersion, 600000);
+    }
 }
 
 function checkAppVersion(){
