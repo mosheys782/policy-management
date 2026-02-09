@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 65 - Stay on current page when changing status or assignee -->
+<!-- Version 67 - Stay on current page when changing status or assignee -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <title>Policy Management</title>
     <script>
     // ONE-TIME FORCE REFRESH - Change this number to force all users to refresh
-    var FORCE_REFRESH_VERSION = 65;
+    var FORCE_REFRESH_VERSION = 67;
     (function(){
         var key = 'pm_force_refresh_v';
         var lastForced = localStorage.getItem(key);
@@ -54,12 +54,12 @@
         .signout-btn:hover{background:rgba(255,255,255,0.2)}
         
         /* Stat cards - PLM style with icons */
-        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
-        .stat{background:#fff;border-radius:12px;padding:20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,0.1);cursor:pointer;transition:all 0.2s;border-left:4px solid}
+        .stats{display:grid;grid-template-columns:repeat(8,1fr);gap:12px;margin-bottom:24px}
+        .stat{background:#fff;border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,0.1);cursor:pointer;transition:all 0.2s;border-left:4px solid}
         .stat:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.1)}
-        .stat-info .label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
-        .stat-info .num{font-size:32px;font-weight:700}
-        .stat-icon{font-size:32px;opacity:0.8}
+        .stat-info .label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
+        .stat-info .num{font-size:26px;font-weight:700}
+        .stat-icon{font-size:24px;opacity:0.8}
         .stat.red{border-left-color:#ef4444}.stat.red .num{color:#ef4444}
         .stat.yellow{border-left-color:#eab308}.stat.yellow .num{color:#eab308}
         .stat.orange{border-left-color:#f97316}.stat.orange .num{color:#f97316}
@@ -67,6 +67,7 @@
         .stat.teal{border-left-color:#14b8a6}.stat.teal .num{color:#14b8a6}
         .stat.rose{border-left-color:#ec4899}.stat.rose .num{color:#ec4899}
         .stat.green{border-left-color:#22c55e}.stat.green .num{color:#22c55e}
+        .stat.purple{border-left-color:#7c3aed}.stat.purple .num{color:#7c3aed}
         
         /* Tabs - Cleaner design */
         .tabs{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-bottom:24px}
@@ -249,6 +250,7 @@
         
         <div class="stats">
             <div class="stat red" onclick="filterStat('pastDue')"><div class="stat-info"><div class="label">Past Due</div><div class="num" id="sPastDue">0</div></div><div class="stat-icon">🚨</div></div>
+            <div class="stat purple" onclick="filterStat('needsAction')"><div class="stat-info"><div class="label">Needs Action</div><div class="num" id="sNeedsAction">0</div></div><div class="stat-icon">🔔</div></div>
             <div class="stat yellow" onclick="filterStat('dueToday')"><div class="stat-info"><div class="label">Due Today</div><div class="num" id="sDueToday">0</div></div><div class="stat-icon">📅</div></div>
             <div class="stat orange" onclick="filterStat('dueWeek')"><div class="stat-info"><div class="label">Due This Week</div><div class="num" id="sDueWeek">0</div></div><div class="stat-icon">⚠️</div></div>
             <div class="stat gray" onclick="filterStat('progress')"><div class="stat-info"><div class="label">In Progress</div><div class="num" id="sProgress">0</div></div><div class="stat-icon">⏳</div></div>
@@ -289,14 +291,14 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v65</span></footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v67</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
 // App Version - increment this when deploying updates
-const APP_VERSION = 65;
+const APP_VERSION = 67;
 
 // Version check - runs on page load to detect updates
 (function checkForUpdates(){
@@ -623,6 +625,14 @@ function filter(preservePage=false){
                 const exp=parseLocalDate(p.ExpDate);
                 if(!(!p.AssignedId&&exp&&exp>=today&&exp<=future90))return false;
             }
+            if(statFilter==='needsAction'){
+                let badgeDate=getDue(p);
+                if(badgeDate && p.TransType!=='New Business'){
+                    badgeDate=new Date(badgeDate);
+                    badgeDate.setDate(badgeDate.getDate()-1);
+                }
+                if(!isPol||p.Status!=='Not Started'||!badgeDate||badgeDate>=week)return false;
+            }
         }
         
         if(search){const txt=[p.Title,p.PolicyNumber,p.Carrier,p.Notes,p.AssignedName].join(' ').toLowerCase();if(!txt.includes(search))return false}
@@ -681,7 +691,7 @@ function updateActiveFilters(){
     
     if(search)tags.push({type:'search',label:`Search: "${search}"`});
     if(statFilter){
-        const statLabels={'pastDue':'Past Due','dueToday':'Due Today','dueWeek':'Due This Week','progress':'In Progress','unassign':'Unassigned','billing':'In Billing','billPast':'Billing Past Due'};
+        const statLabels={'pastDue':'Past Due','dueToday':'Due Today','dueWeek':'Due This Week','needsAction':'Needs Action','progress':'In Progress','unassign':'Unassigned','billing':'In Billing','billPast':'Billing Past Due'};
         tags.push({type:'stat',label:`📊 ${statLabels[statFilter]||statFilter}`});
     }
     if(statusF)tags.push({type:'status',label:`Status: ${statusF}`});
@@ -943,7 +953,7 @@ function updateStats(){
     const tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
     const week=new Date(today);week.setDate(week.getDate()+7);
     const f90=new Date(today);f90.setDate(f90.getDate()+90);
-    let pd=0,dt=0,dw=0,ip=0,bl=0,bp=0,ua=0;
+    let pd=0,dt=0,dw=0,ip=0,bl=0,bp=0,ua=0,na=0;
     policies.forEach(p=>{
         if(p.Archived)return;
         const exp=parseLocalDate(p.ExpDate);
@@ -960,6 +970,8 @@ function updateStats(){
             if(polBadgeDate&&polBadgeDate<today)pd++;
             if(polBadgeDate&&polBadgeDate>=today&&polBadgeDate<tomorrow)dt++;
             if(polBadgeDate&&polBadgeDate>=today&&polBadgeDate<week)dw++;
+            // Needs Action: past due or due this week AND status is Not Started
+            if(p.Status==='Not Started'&&polBadgeDate&&polBadgeDate<week)na++;
         }
         // In progress: ONLY in PROGRESS statuses
         if(isPol&&PROGRESS.includes(p.Status))ip++;
@@ -979,6 +991,7 @@ function updateStats(){
     document.getElementById('sBilling').textContent=bl;
     document.getElementById('sBillPast').textContent=bp;
     document.getElementById('sUnassign').textContent=ua;
+    document.getElementById('sNeedsAction').textContent=na;
 }
 
 function updateTabCounts(){
