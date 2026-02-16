@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 67 - Stay on current page when changing status or assignee -->
+<!-- Version 69 - Improved auto-update mechanism -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <title>Policy Management</title>
     <script>
     // ONE-TIME FORCE REFRESH - Change this number to force all users to refresh
-    var FORCE_REFRESH_VERSION = 67;
+    var FORCE_REFRESH_VERSION = 69;
     (function(){
         var key = 'pm_force_refresh_v';
         var lastForced = localStorage.getItem(key);
@@ -291,24 +291,24 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v67</span></footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v69</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
 // App Version - increment this when deploying updates
-const APP_VERSION = 67;
+const APP_VERSION = 69;
 
 // Version check - runs on page load to detect updates
 (function checkForUpdates(){
     const lastCheck = sessionStorage.getItem('pm_version_checked');
     const now = Date.now();
-    // Only check once per session or every 5 minutes
-    if(lastCheck && (now - parseInt(lastCheck)) < 300000) return;
+    // Only check once per session or every 60 seconds
+    if(lastCheck && (now - parseInt(lastCheck)) < 60000) return;
     sessionStorage.setItem('pm_version_checked', now);
     
-    fetch(location.href + '?_=' + now, {cache: 'no-store'})
+    fetch(location.pathname + '?_nocache=' + now, {cache: 'no-store'})
         .then(r => r.text())
         .then(html => {
             const match = html.match(/const APP_VERSION\s*=\s*(\d+)/);
@@ -316,8 +316,8 @@ const APP_VERSION = 67;
                 const serverVersion = parseInt(match[1]);
                 if(serverVersion > APP_VERSION){
                     console.log('New version available:', serverVersion, '(current:', APP_VERSION + ')');
-                    // Force refresh to get new version
-                    location.reload(true);
+                    // Force cache-busted redirect
+                    location.replace(location.pathname + '?_v=' + serverVersion + '&_t=' + now);
                 }
             }
         })
@@ -382,7 +382,7 @@ async function graph(url,opts={},retry=true){
 
 async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/User%20Information%20List/items?$expand=fields&$top=500`);siteUsers=r.value.map(u=>({id:String(u.fields.id),name:u.fields.Title||'',email:u.fields.EMail||''})).filter(u=>u.name);const email=user.username?.toLowerCase();const me=siteUsers.find(u=>u.email?.toLowerCase()===email);if(me)currentUserId=me.id;console.log('Current user:',currentUserId)}catch(e){console.log('Site users error:',e.message)}}
 
-async function loadPolicies(){document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px"><div class="spinner"></div>Loading policies...</td></tr>';try{policies=[];let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;const types=new Set();while(url){const r=await graph(url);r.value.forEach(item=>{const f=item.fields;let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}const pType=f.PolicyType||'';if(pType)types.add(pType);policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:pType,Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||''})});url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null}const typeSelect=document.getElementById('fType');[...types].sort().forEach(t=>typeSelect.innerHTML+=`<option value="${t}">${t}</option>`);console.log('Loaded:',policies.length);buildAssigneeFilter();filter();updateStats()}catch(e){console.error('Load:',e);document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626">Error loading policies</td></tr>'}}
+async function loadPolicies(){document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px"><div class="spinner"></div>Loading policies...</td></tr>';try{policies=[];let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;const types=new Set();while(url){const r=await graph(url);r.value.forEach(item=>{const f=item.fields;let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}const pType=f.PolicyType||'';if(pType)types.add(pType);policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:pType,Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||'',PolicyStatus:f.PolicyStatus||''})});url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null}const typeSelect=document.getElementById('fType');[...types].sort().forEach(t=>typeSelect.innerHTML+=`<option value="${t}">${t}</option>`);console.log('Loaded:',policies.length);buildAssigneeFilter();filter();updateStats()}catch(e){console.error('Load:',e);document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626">Error loading policies</td></tr>'}}
 
 function buildAssigneeFilter(){const names=new Map();policies.forEach(p=>{if(p.AssignedId&&p.AssignedName)names.set(p.AssignedId,p.AssignedName)});const sel=document.getElementById('fAssignee');sel.innerHTML='<option value="">All Assignees</option>';[...names.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([id,name])=>sel.innerHTML+=`<option value="${id}">${name}</option>`)}
 
@@ -408,7 +408,7 @@ async function refreshData(silent=false){
                 const f=item.fields;
                 let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;
                 if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}
-                policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:f.PolicyType||'',Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||''});
+                policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:f.PolicyType||'',Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||'',PolicyStatus:f.PolicyStatus||''});
             });
             url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null;
         }
@@ -428,23 +428,23 @@ async function refreshData(silent=false){
 function startAutoRefresh(){
     if(refreshInterval)clearInterval(refreshInterval);
     refreshInterval=setInterval(()=>refreshData(true),REFRESH_INTERVAL);
-    // Check for updates every 10 minutes (only start once)
+    // Check for updates every 3 minutes (only start once)
     if(!window._versionCheckStarted){
         window._versionCheckStarted=true;
-        setInterval(checkAppVersion, 600000);
+        setInterval(checkAppVersion, 180000);
     }
 }
 
 function checkAppVersion(){
-    fetch(location.href + '?_=' + Date.now(), {cache: 'no-store'})
+    fetch(location.pathname + '?_nocache=' + Date.now(), {cache: 'no-store'})
         .then(r => r.text())
         .then(html => {
             const match = html.match(/const APP_VERSION\s*=\s*(\d+)/);
             if(match){
                 const serverVersion = parseInt(match[1]);
                 if(serverVersion > APP_VERSION){
-                    if(confirm('A new version is available! Click OK to refresh and get the latest updates.')){
-                        location.reload(true);
+                    if(confirm('A new version (v' + serverVersion + ') is available! Click OK to refresh and get the latest updates.')){
+                        location.replace(location.pathname + '?_v=' + serverVersion + '&_t=' + Date.now());
                     }
                 }
             }
@@ -779,7 +779,7 @@ function render(){
             <div class="policy-info">
                 <span class="type-badge ${badgeClass}">${transLabel}</span>
                 <h3>${esc(p.Title)}</h3>
-                <div class="meta">${esc(p.PolicyNumber)}${p.PolicyType?' • '+esc(p.PolicyType):''}${p.BizType?' • '+p.BizType:''}</div>
+                <div class="meta">${esc(p.PolicyNumber)}${p.PolicyType?' • '+esc(p.PolicyType):''}${p.BizType?' • '+p.BizType:''}${p.PolicyStatus?' • '+esc(p.PolicyStatus):''}</div>
                 ${p.Carrier?`<div class="carrier">🏢 ${esc(p.Carrier)}</div>`:''}
                 ${p.Notes?`<div class="notes">📝 ${esc(p.Notes.length>30?p.Notes.substring(0,30)+'...':p.Notes)}</div>`:''}
             </div>
