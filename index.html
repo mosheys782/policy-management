@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 69 - Improved auto-update mechanism -->
+<!-- Version 70 - Added AMS360 Status dropdown filter -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <title>Policy Management</title>
     <script>
     // ONE-TIME FORCE REFRESH - Change this number to force all users to refresh
-    var FORCE_REFRESH_VERSION = 69;
+    var FORCE_REFRESH_VERSION = 70;
     (function(){
         var key = 'pm_force_refresh_v';
         var lastForced = localStorage.getItem(key);
@@ -275,6 +275,7 @@
                     <select id="fType" onchange="filter()"><option value="">All Types</option></select>
                     <select id="fTransType" onchange="filter()"><option value="">All Transactions</option><option value="Renewal">Renewal</option><option value="New Business">New Business</option></select>
                     <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
+                    <select id="fPolicyStatus" onchange="filter()"><option value="">All AMS360 Statuses</option></select>
                     <label><input type="checkbox" id="fUnassigned" onchange="filter()"> Unassigned Only</label>
                     <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
                     <button class="clear-filters-btn" id="clearFiltersBtn" onclick="clearFilters()">✕ Clear Filters</button>
@@ -291,14 +292,14 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v69</span></footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v70</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
 // App Version - increment this when deploying updates
-const APP_VERSION = 69;
+const APP_VERSION = 70;
 
 // Version check - runs on page load to detect updates
 (function checkForUpdates(){
@@ -382,9 +383,11 @@ async function graph(url,opts={},retry=true){
 
 async function loadSiteUsers(){try{const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/User%20Information%20List/items?$expand=fields&$top=500`);siteUsers=r.value.map(u=>({id:String(u.fields.id),name:u.fields.Title||'',email:u.fields.EMail||''})).filter(u=>u.name);const email=user.username?.toLowerCase();const me=siteUsers.find(u=>u.email?.toLowerCase()===email);if(me)currentUserId=me.id;console.log('Current user:',currentUserId)}catch(e){console.log('Site users error:',e.message)}}
 
-async function loadPolicies(){document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px"><div class="spinner"></div>Loading policies...</td></tr>';try{policies=[];let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;const types=new Set();while(url){const r=await graph(url);r.value.forEach(item=>{const f=item.fields;let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}const pType=f.PolicyType||'';if(pType)types.add(pType);policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:pType,Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||'',PolicyStatus:f.PolicyStatus||''})});url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null}const typeSelect=document.getElementById('fType');[...types].sort().forEach(t=>typeSelect.innerHTML+=`<option value="${t}">${t}</option>`);console.log('Loaded:',policies.length);buildAssigneeFilter();filter();updateStats()}catch(e){console.error('Load:',e);document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626">Error loading policies</td></tr>'}}
+async function loadPolicies(){document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px"><div class="spinner"></div>Loading policies...</td></tr>';try{policies=[];let url=`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items?$expand=fields&$top=999`;const types=new Set();while(url){const r=await graph(url);r.value.forEach(item=>{const f=item.fields;let assignedId=f[F_ASSIGNED]?String(f[F_ASSIGNED]):null,assignedName=null;if(assignedId){const u=siteUsers.find(su=>su.id===assignedId);if(u)assignedName=u.name}const pType=f.PolicyType||'';if(pType)types.add(pType);policies.push({id:item.id,Title:f.Title||'',PolicyNumber:f.PolicyNumber||'',PolicyType:pType,Carrier:f.Carrier||'',BizType:f.BusinessWithAgency||'',EffDate:f.EffectiveDate||'',ExpDate:f.ExpirationDate||'',ExpCost:f.ExpiringTotalCost,RenCost:f.RenewalTotalCost,DollarChg:f._x0024__x0020_Change,PctChg:f.PercentChange,Status:f.RenewalStatus||'Not Started',BillStatus:f.BillingStatus||'Not Started',Notes:f[F_NOTES]||'',IntNotes:f.InternalNotes||'',TransType:f.TransactionType||'Renewal',Archived:f.Archived||false,AssignedId:assignedId,AssignedName:assignedName,AMS360Link:f.AMS360CustomerLink?.Url||'',PolicyStatus:f.PolicyStatus||''})});url=r['@odata.nextLink']?r['@odata.nextLink'].replace('https://graph.microsoft.com/v1.0',''):null}const typeSelect=document.getElementById('fType');[...types].sort().forEach(t=>typeSelect.innerHTML+=`<option value="${t}">${t}</option>`);console.log('Loaded:',policies.length);buildAssigneeFilter();buildPolicyStatusFilter();filter();updateStats()}catch(e){console.error('Load:',e);document.getElementById('gridBody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626">Error loading policies</td></tr>'}}
 
 function buildAssigneeFilter(){const names=new Map();policies.forEach(p=>{if(p.AssignedId&&p.AssignedName)names.set(p.AssignedId,p.AssignedName)});const sel=document.getElementById('fAssignee');sel.innerHTML='<option value="">All Assignees</option>';[...names.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([id,name])=>sel.innerHTML+=`<option value="${id}">${name}</option>`)}
+
+function buildPolicyStatusFilter(){const statuses=new Set();policies.forEach(p=>{if(p.PolicyStatus)statuses.add(p.PolicyStatus)});const sel=document.getElementById('fPolicyStatus');const cur=sel.value;sel.innerHTML='<option value="">All AMS360 Statuses</option>';[...statuses].sort().forEach(s=>sel.innerHTML+=`<option value="${s}">${s}</option>`);sel.value=cur}
 
 // Auto-refresh functionality
 let lastRefresh=Date.now();
@@ -414,6 +417,7 @@ async function refreshData(silent=false){
         }
         lastRefresh=Date.now();
         buildAssigneeFilter();
+        buildPolicyStatusFilter();
         filter();
         updateStats();
         if(!silent)toast('Data refreshed','ok');
@@ -539,6 +543,7 @@ function filter(preservePage=false){
     const typeF=document.getElementById('fType').value;
     const transTypeF=document.getElementById('fTransType').value;
     const bizTypeF=document.getElementById('fBizType').value;
+    const policyStatusF=document.getElementById('fPolicyStatus').value;
     const unassignedF=document.getElementById('fUnassigned').checked;
     const showAll=document.getElementById('fShowAll').checked;
     const isMyPolicy=tab==='myPolicy';
@@ -563,6 +568,7 @@ function filter(preservePage=false){
             if(assigneeF&&p.AssignedId!==assigneeF)return false;
             if(typeF&&p.PolicyType!==typeF)return false;
             if(bizTypeF&&p.BizType!==bizTypeF)return false;
+            if(policyStatusF&&p.PolicyStatus!==policyStatusF)return false;
             if(unassignedF&&p.AssignedId)return false;
             return true;
         }
@@ -641,6 +647,7 @@ function filter(preservePage=false){
         if(typeF&&p.PolicyType!==typeF)return false;
         if(transTypeF&&p.TransType!==transTypeF)return false;
         if(bizTypeF&&p.BizType!==bizTypeF)return false;
+        if(policyStatusF&&p.PolicyStatus!==policyStatusF)return false;
         if(unassignedF&&p.AssignedId)return false;
         return true;
     });
@@ -656,6 +663,7 @@ function clearFilters(){
     document.getElementById('fType').value='';
     document.getElementById('fTransType').value='';
     document.getElementById('fBizType').value='';
+    document.getElementById('fPolicyStatus').value='';
     document.getElementById('fUnassigned').checked=false;
     document.getElementById('fShowAll').checked=false;
     statFilter=null;
@@ -669,6 +677,7 @@ function removeFilter(filterType){
     else if(filterType==='type')document.getElementById('fType').value='';
     else if(filterType==='transType')document.getElementById('fTransType').value='';
     else if(filterType==='bizType')document.getElementById('fBizType').value='';
+    else if(filterType==='policyStatus')document.getElementById('fPolicyStatus').value='';
     else if(filterType==='unassigned')document.getElementById('fUnassigned').checked=false;
     else if(filterType==='showAll')document.getElementById('fShowAll').checked=false;
     else if(filterType==='stat')statFilter=null;
@@ -686,6 +695,7 @@ function updateActiveFilters(){
     const typeF=document.getElementById('fType').value;
     const transTypeF=document.getElementById('fTransType').value;
     const bizTypeF=document.getElementById('fBizType').value;
+    const policyStatusF=document.getElementById('fPolicyStatus').value;
     const unassignedF=document.getElementById('fUnassigned').checked;
     const showAllF=document.getElementById('fShowAll').checked;
     
@@ -702,6 +712,7 @@ function updateActiveFilters(){
     if(typeF)tags.push({type:'type',label:`Type: ${typeF}`});
     if(transTypeF)tags.push({type:'transType',label:`Transaction: ${transTypeF}`});
     if(bizTypeF)tags.push({type:'bizType',label:`Business: ${bizTypeF==='CL'?'Commercial':'Personal'}`});
+    if(policyStatusF)tags.push({type:'policyStatus',label:`AMS360 Status: ${policyStatusF}`});
     if(unassignedF)tags.push({type:'unassigned',label:'Unassigned Only'});
     if(showAllF)tags.push({type:'showAll',label:'All Dates'});
     
@@ -944,7 +955,7 @@ async function setGridAssigneeDD(policyId,userId,userName,isSiteUser){
         const p=policies.find(x=>x.id===policyId);
         if(p){p.AssignedId=userId||null;p.AssignedName=userName||null}
         toast('Assignee updated','ok');
-        buildAssigneeFilter();filter(true);updateStats();
+        buildAssigneeFilter();buildPolicyStatusFilter();filter(true);updateStats();
     }catch(e){console.error(e);toast('Update failed','err')}
 }
 
@@ -1022,6 +1033,7 @@ function filterStat(stat){
     document.getElementById('fAssignee').value='';
     document.getElementById('fType').value='';
     document.getElementById('fBizType').value='';
+    document.getElementById('fPolicyStatus').value='';
     document.getElementById('fUnassigned').checked=false;
     if(stat==='billing'||stat==='billPast')switchTab('allBilling',true);
     else switchTab('allPolicy',true);
@@ -1149,7 +1161,7 @@ async function save(){
             policies.push({id:r.id,Title:fields.Title,PolicyNumber:fields.PolicyNumber,PolicyType:fields.PolicyType,Carrier:fields.Carrier,BizType:fields.BusinessWithAgency,EffDate:fields.EffectiveDate,ExpDate:fields.ExpirationDate,ExpCost:fields.ExpiringTotalCost,RenCost:fields.RenewalTotalCost,DollarChg:null,PctChg:null,Status:fields.RenewalStatus,BillStatus:fields.BillingStatus,Notes:fields[F_NOTES],IntNotes:fields.InternalNotes,TransType:fields.TransactionType,Archived:false,AssignedId:assignId||null,AssignedName:document.getElementById('pAssignName').value||null});
         }
         toast(selected?'Saved!':'Policy created!','ok');
-        closePanel();buildAssigneeFilter();filter();updateStats();
+        closePanel();buildAssigneeFilter();buildPolicyStatusFilter();filter();updateStats();
         // Silent background refresh to pick up server-calculated fields ($ Change, % Change)
         setTimeout(()=>refreshData(true),500);
     }catch(e){console.error('Save:',e);toast('Save failed','err')}
