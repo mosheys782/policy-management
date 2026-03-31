@@ -595,9 +595,19 @@ function filter(preservePage=false){
         }
         if(p.Archived)return false;
         if(isMy&&p.AssignedId!==currentUserId)return false;
-        if(!showAll&&p.ExpDate){
+        
+        // Past-due stat filters must bypass the date window entirely
+        const isPastDueFilter=statFilter==='pastDue'||statFilter==='billPast'||statFilter==='needsAction';
+        if(!showAll&&!isPastDueFilter&&p.ExpDate){
             const exp=parseLocalDate(p.ExpDate);
-            if(exp&&(exp<past30||exp>future90))return false;
+            // Always let past-due items through even without showAll
+            let badgeDate=exp;
+            if(badgeDate && p.TransType!=='New Business' && !isBilling){
+                badgeDate=new Date(badgeDate);
+                badgeDate.setDate(badgeDate.getDate()-1);
+            }
+            const isItemPastDue=badgeDate&&badgeDate<today;
+            if(!isItemPastDue&&exp&&(exp<past30||exp>future90))return false;
         }
         if(isBilling){
             if(!['Bound','Bound-New carrier'].includes(p.Status))return false;
