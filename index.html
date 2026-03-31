@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version 70 - Added AMS360 Status dropdown filter -->
+<!-- Version 71 - Removed Replaced status, added Billing Status filter, added sort by status change date -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <title>Policy Management</title>
     <script>
     // ONE-TIME FORCE REFRESH - Change this number to force all users to refresh
-    var FORCE_REFRESH_VERSION = 70;
+    var FORCE_REFRESH_VERSION = 71;
     (function(){
         var key = 'pm_force_refresh_v';
         var lastForced = localStorage.getItem(key);
@@ -80,15 +80,24 @@
         .tab-divider{width:1px;background:#e5e7eb;margin:12px 8px}
         
         /* Filters */
-        .filters{padding:14px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:#f9fafb;border-top:1px solid #e5e7eb}
-        .filters select{padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;min-width:130px;cursor:pointer;background:#fff;color:#334155}
-        .filters select:hover{border-color:#3b82f6}
-        .filters select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
-        .filters label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:#475569}
-        .filters label input{width:16px;height:16px;accent-color:#3b82f6}
-        .clear-filters-btn{padding:8px 14px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-size:13px;cursor:pointer;transition:all 0.15s;display:none}
+        .filters{padding:0;background:#f8fafc;border-top:1px solid #e5e7eb}
+        .filters-row{display:flex;gap:8px;align-items:center;padding:10px 16px;flex-wrap:nowrap}
+        .filters-row.wrap{flex-wrap:wrap;padding:8px 16px 10px;border-top:1px solid #f1f5f9;background:#f1f5f9}
+        .filters-row select{padding:7px 28px 7px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:12.5px;cursor:pointer;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E") no-repeat right 9px center;-webkit-appearance:none;appearance:none;color:#334155;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color 0.15s,box-shadow 0.15s}
+        .filters-row select:hover{border-color:#93c5fd;background-color:#f8fafc}
+        .filters-row select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+        .filter-divider{width:1px;height:20px;background:#e2e8f0;flex-shrink:0;margin:0 2px}
+        .filters-row select.sort-select{border-left:2px solid #3b82f6;background-color:#eff6ff;color:#1d4ed8;font-weight:500}
+        .filters-row select.sort-select:hover{border-color:#2563eb;background-color:#dbeafe}
+        .filters label{display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;color:#475569;padding:5px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;white-space:nowrap;transition:all 0.15s}
+        .filters label:hover{border-color:#93c5fd;background:#f0f9ff;color:#1d4ed8}
+        .filters label input{width:14px;height:14px;accent-color:#3b82f6;cursor:pointer}
+        .filters label input:checked ~ span,.filters label:has(input:checked){border-color:#3b82f6;background:#eff6ff;color:#1d4ed8}
+        .clear-filters-btn{padding:6px 12px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;color:#64748b;font-size:12.5px;cursor:pointer;transition:all 0.15s;display:none;white-space:nowrap;margin-left:auto;flex-shrink:0}
         .clear-filters-btn:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
-        .clear-filters-btn.visible{display:inline-flex;align-items:center;gap:6px}
+        .clear-filters-btn.visible{display:inline-flex;align-items:center;gap:5px}
+        @media(max-width:1200px){.filters-row{flex-wrap:wrap}}
+        @media(max-width:900px){.filters-row{gap:6px}}
         .active-filters{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px;background:#eff6ff;border-top:1px solid #bfdbfe;align-items:center}
         .active-filters:empty{display:none}
         .active-filters-label{font-size:12px;color:#3b82f6;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
@@ -103,12 +112,12 @@
         .grid-table thead tr{display:table-row;background:#f9fafb}
         .grid-table th{padding:14px 16px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;text-align:left;white-space:nowrap;border-bottom:1px solid #e5e7eb}
         .grid-table th:first-child{padding-left:24px}
-        .grid-table th:last-child{padding-right:24px}
+        .grid-table th:last-child{padding-right:20px;text-align:center}
         .grid-table th.premium-col{text-align:right}
         .grid-table th.center{text-align:center}
         .grid-table td{padding:14px 16px;border-bottom:1px solid #e5e7eb;vertical-align:middle}
         .grid-table td:first-child{padding-left:24px}
-        .grid-table td:last-child{padding-right:24px}
+        .grid-table td.btn-cell{padding:14px 20px 14px 8px;text-align:center;width:52px;vertical-align:middle}
         .grid-table tbody tr{transition:all 0.15s ease}
         .grid-table tbody tr:nth-child(even){background:#f9fafb}
         .grid-table tbody tr:hover td{background:#f1f5f9}
@@ -270,15 +279,26 @@
                     <div class="tab" data-tab="archived" onclick="switchTab('archived')">📁 Archived<span class="count" id="tArch">0</span></div>
                 </div>
                 <div class="filters">
-                    <select id="fStatus" onchange="filter()"><option value="">All Statuses</option></select>
-                    <select id="fAssignee" onchange="filter()"><option value="">All Assignees</option></select>
-                    <select id="fType" onchange="filter()"><option value="">All Types</option></select>
-                    <select id="fTransType" onchange="filter()"><option value="">All Transactions</option><option value="Renewal">Renewal</option><option value="New Business">New Business</option></select>
-                    <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
-                    <select id="fPolicyStatus" onchange="filter()"><option value="">All AMS360 Statuses</option></select>
-                    <label><input type="checkbox" id="fUnassigned" onchange="filter()"> Unassigned Only</label>
-                    <label><input type="checkbox" id="fShowAll" onchange="filter()"> Show All Dates</label>
-                    <button class="clear-filters-btn" id="clearFiltersBtn" onclick="clearFilters()">✕ Clear Filters</button>
+                    <div class="filters-row">
+                        <select id="fStatus" onchange="filter()"><option value="">All Statuses</option></select>
+                        <select id="fBillStatus" onchange="filter()"><option value="">All Billing Statuses</option></select>
+                        <select id="fAssignee" onchange="filter()"><option value="">All Assignees</option></select>
+                        <select id="fType" onchange="filter()"><option value="">All Types</option></select>
+                        <select id="fTransType" onchange="filter()"><option value="">All Transactions</option><option value="Renewal">Renewal</option><option value="New Business">New Business</option></select>
+                        <select id="fBizType" onchange="filter()"><option value="">All Business</option><option value="CL">CL - Commercial</option><option value="PL">PL - Personal</option></select>
+                        <select id="fPolicyStatus" onchange="filter()"><option value="">All AMS360 Statuses</option></select>
+                        <div class="filter-divider"></div>
+                        <select id="fSortBy" onchange="changeSortBy(this.value)" class="sort-select" title="Sort order" style="flex:0 0 auto;min-width:190px">
+                            <option value="dueDate">⬆ Sort: Due Date</option>
+                            <option value="polStatusChange">🕐 Policy Status Changed</option>
+                            <option value="billStatusChange">🕐 Billing Status Changed</option>
+                        </select>
+                    </div>
+                    <div class="filters-row wrap">
+                        <label><input type="checkbox" id="fUnassigned" onchange="filter()"> <span>Unassigned Only</span></label>
+                        <label><input type="checkbox" id="fShowAll" onchange="filter()"> <span>Show All Dates</span></label>
+                        <button class="clear-filters-btn" id="clearFiltersBtn" onclick="clearFilters()">✕ Clear All Filters</button>
+                    </div>
                 </div>
                 <div class="active-filters" id="activeFilters"></div>
             </div>
@@ -292,14 +312,14 @@
             </div>
         </main>
         
-        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v70</span></footer>
+        <footer class="footer">🔒 Data stored in SharePoint | <span id="appVersion">v71</span></footer>
     </div>
     <div class="panel-bg" id="panelBg" onclick="closePanel()"></div>
     <div class="panel" id="panel"><div class="panel-header"><h2 id="panelTitle">Policy Details</h2><button class="panel-close" onclick="closePanel()">×</button></div><div class="panel-body" id="panelBody"></div><div class="panel-footer"><button class="btn btn-cancel" onclick="closePanel()">Cancel</button><button class="btn btn-save" onclick="save()">Save Changes</button></div></div>
     <div class="toast" id="toast"></div>
 <script>
 // App Version - increment this when deploying updates
-const APP_VERSION = 70;
+const APP_VERSION = 71;
 
 // Version check - runs on page load to detect updates
 (function checkForUpdates(){
@@ -326,18 +346,18 @@ const APP_VERSION = 70;
 })();
 
 const CONFIG={clientId:'d2dbeace-3b37-4da9-85db-0bb4ca328f68',tenantId:'8b20613e-54c4-43a3-af63-92cdbf260edb',siteId:'9159d942-f331-4ac9-bd64-d609d016f38a',listId:'eb615fe6-0253-45b6-bab1-d436c553e5df',siteHost:'gancfried.sharepoint.com'};
-const STATUSES=['Not Started','In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received','Bound-Direct Bill','Bound','Bound-New carrier','Lost','Replaced'];
+const STATUSES=['Not Started','In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received','Bound-Direct Bill','Bound','Bound-New carrier','Lost'];
 const BILL_STATUSES=['Not Started','Invoice Sent','Payment Received','Closed'];
-const COLORS={'Not Started':'#6b7280','In-Progress':'#2563eb','Pending – Quote':'#7c3aed','Pending – Customer':'#d97706','Pending – Underwriting':'#db2777','Quote-Received':'#059669','Bound-Direct Bill':'#d97706','Bound':'#16a34a','Bound-New carrier':'#0891b2','Lost':'#dc2626','Replaced':'#6b7280','Invoice Sent':'#d97706','Payment Received':'#16a34a','Closed':'#6b7280'};
-const EXIT=['Bound','Bound-Direct Bill','Bound-New carrier','Lost','Replaced'],PROGRESS=['In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received'],ACOLORS=['#dc2626','#ea580c','#d97706','#16a34a','#0891b2','#2563eb','#7c3aed','#c026d3','#059669','#0d9488','#6366f1','#8b5cf6','#ec4899','#f43f5e','#84cc16','#06b6d4'];
+const COLORS={'Not Started':'#6b7280','In-Progress':'#2563eb','Pending – Quote':'#7c3aed','Pending – Customer':'#d97706','Pending – Underwriting':'#db2777','Quote-Received':'#059669','Bound-Direct Bill':'#d97706','Bound':'#16a34a','Bound-New carrier':'#0891b2','Lost':'#dc2626','Invoice Sent':'#d97706','Payment Received':'#16a34a','Closed':'#6b7280'};
+const EXIT=['Bound','Bound-Direct Bill','Bound-New carrier','Lost'],PROGRESS=['In-Progress','Pending – Quote','Pending – Customer','Pending – Underwriting','Quote-Received'],ACOLORS=['#dc2626','#ea580c','#d97706','#16a34a','#0891b2','#2563eb','#7c3aed','#c026d3','#059669','#0d9488','#6366f1','#8b5cf6','#ec4899','#f43f5e','#84cc16','#06b6d4'];
 const msalConfig={auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:location.origin},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}};
-let msal,user,token,currentUserId=null,policies=[],filtered=[],siteUsers=[],tab='myPolicy',selected=null,page=1,PAGE_SIZE=10,statFilter=null;
+let msal,user,token,currentUserId=null,policies=[],filtered=[],siteUsers=[],tab='myPolicy',selected=null,page=1,PAGE_SIZE=10,statFilter=null,sortBy='dueDate';
 const F_ASSIGNED='AssignedTo0LookupId',F_NOTES='NextStep';
 
 // HTML escape function to prevent template literal breaking
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;')}
 
-document.addEventListener('DOMContentLoaded',async()=>{msal=new window.msal.PublicClientApplication(msalConfig);await msal.initialize();const a=msal.getAllAccounts();if(a.length){user=a[0];await getToken();showApp()}STATUSES.forEach(s=>document.getElementById('fStatus').innerHTML+=`<option value="${s}">${s}</option>`);document.addEventListener('click',e=>{if(!e.target.closest('.status-cell')&&!e.target.closest('.status-dd'))document.querySelectorAll('.status-dd').forEach(d=>d.remove());if(!e.target.closest('.assignee-cell')&&!e.target.closest('.assignee-dd'))document.querySelectorAll('.assignee-dd').forEach(d=>d.remove());if(!e.target.closest('.autocomplete'))document.querySelectorAll('.autocomplete-dd').forEach(d=>d.classList.remove('open'))})});
+document.addEventListener('DOMContentLoaded',async()=>{msal=new window.msal.PublicClientApplication(msalConfig);await msal.initialize();const a=msal.getAllAccounts();if(a.length){user=a[0];await getToken();showApp()}STATUSES.forEach(s=>document.getElementById('fStatus').innerHTML+=`<option value="${s}">${s}</option>`);BILL_STATUSES.forEach(s=>document.getElementById('fBillStatus').innerHTML+=`<option value="${s}">${s}</option>`);document.addEventListener('click',e=>{if(!e.target.closest('.status-cell')&&!e.target.closest('.status-dd'))document.querySelectorAll('.status-dd').forEach(d=>d.remove());if(!e.target.closest('.assignee-cell')&&!e.target.closest('.assignee-dd'))document.querySelectorAll('.assignee-dd').forEach(d=>d.remove());if(!e.target.closest('.autocomplete'))document.querySelectorAll('.autocomplete-dd').forEach(d=>d.classList.remove('open'))})});
 async function signIn(){try{const r=await msal.loginPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});user=r.account;token=r.accessToken;showApp()}catch(e){console.error(e);toast('Login failed','err')}}
 async function getToken(){try{const r=await msal.acquireTokenSilent({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All'],account:user});token=r.accessToken}catch(e){const r=await msal.acquireTokenPopup({scopes:['User.Read','User.ReadBasic.All','Sites.ReadWrite.All']});token=r.accessToken}return token}
 function signOut(){msal.logoutPopup()}
@@ -539,6 +559,7 @@ function acolor(id,name){
 function filter(preservePage=false){
     const search=document.getElementById('search').value.toLowerCase();
     const statusF=document.getElementById('fStatus').value;
+    const billStatusF=document.getElementById('fBillStatus').value;
     const assigneeF=document.getElementById('fAssignee').value;
     const typeF=document.getElementById('fType').value;
     const transTypeF=document.getElementById('fTransType').value;
@@ -643,6 +664,7 @@ function filter(preservePage=false){
         
         if(search){const txt=[p.Title,p.PolicyNumber,p.Carrier,p.Notes,p.AssignedName].join(' ').toLowerCase();if(!txt.includes(search))return false}
         if(statusF&&p.Status!==statusF)return false;
+        if(billStatusF&&p.BillStatus!==billStatusF)return false;
         if(assigneeF&&p.AssignedId!==assigneeF)return false;
         if(typeF&&p.PolicyType!==typeF)return false;
         if(transTypeF&&p.TransType!==transTypeF)return false;
@@ -651,7 +673,21 @@ function filter(preservePage=false){
         if(unassignedF&&p.AssignedId)return false;
         return true;
     });
-    filtered.sort((a,b)=>{const dA=getDue(a),dB=getDue(b);if(!dA)return 1;if(!dB)return -1;return dA-dB});
+    if(sortBy==='polStatusChange'){
+        filtered.sort((a,b)=>{
+            const tA=parseInt(localStorage.getItem('pm_statusChange_'+a.id+'_pol')||'0');
+            const tB=parseInt(localStorage.getItem('pm_statusChange_'+b.id+'_pol')||'0');
+            return tB-tA;
+        });
+    }else if(sortBy==='billStatusChange'){
+        filtered.sort((a,b)=>{
+            const tA=parseInt(localStorage.getItem('pm_statusChange_'+a.id+'_bill')||'0');
+            const tB=parseInt(localStorage.getItem('pm_statusChange_'+b.id+'_bill')||'0');
+            return tB-tA;
+        });
+    }else{
+        filtered.sort((a,b)=>{const dA=getDue(a),dB=getDue(b);if(!dA)return 1;if(!dB)return -1;return dA-dB});
+    }
     if(!preservePage){page=1;}else{const maxPage=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));if(page>maxPage)page=maxPage;}
     render();updateTabCounts();updateActiveFilters();
 }
@@ -659,6 +695,7 @@ function filter(preservePage=false){
 function clearFilters(){
     document.getElementById('search').value='';
     document.getElementById('fStatus').value='';
+    document.getElementById('fBillStatus').value='';
     document.getElementById('fAssignee').value='';
     document.getElementById('fType').value='';
     document.getElementById('fTransType').value='';
@@ -666,6 +703,8 @@ function clearFilters(){
     document.getElementById('fPolicyStatus').value='';
     document.getElementById('fUnassigned').checked=false;
     document.getElementById('fShowAll').checked=false;
+    document.getElementById('fSortBy').value='dueDate';
+    sortBy='dueDate';
     statFilter=null;
     filter();
 }
@@ -673,6 +712,7 @@ function clearFilters(){
 function removeFilter(filterType){
     if(filterType==='search')document.getElementById('search').value='';
     else if(filterType==='status')document.getElementById('fStatus').value='';
+    else if(filterType==='billStatus')document.getElementById('fBillStatus').value='';
     else if(filterType==='assignee')document.getElementById('fAssignee').value='';
     else if(filterType==='type')document.getElementById('fType').value='';
     else if(filterType==='transType')document.getElementById('fTransType').value='';
@@ -681,6 +721,7 @@ function removeFilter(filterType){
     else if(filterType==='unassigned')document.getElementById('fUnassigned').checked=false;
     else if(filterType==='showAll')document.getElementById('fShowAll').checked=false;
     else if(filterType==='stat')statFilter=null;
+    else if(filterType==='sort'){sortBy='dueDate';document.getElementById('fSortBy').value='dueDate';}
     filter();
 }
 
@@ -691,6 +732,7 @@ function updateActiveFilters(){
     
     const search=document.getElementById('search').value;
     const statusF=document.getElementById('fStatus').value;
+    const billStatusF=document.getElementById('fBillStatus').value;
     const assigneeF=document.getElementById('fAssignee').value;
     const typeF=document.getElementById('fType').value;
     const transTypeF=document.getElementById('fTransType').value;
@@ -705,6 +747,8 @@ function updateActiveFilters(){
         tags.push({type:'stat',label:`📊 ${statLabels[statFilter]||statFilter}`});
     }
     if(statusF)tags.push({type:'status',label:`Status: ${statusF}`});
+    if(billStatusF)tags.push({type:'billStatus',label:`Billing Status: ${billStatusF}`});
+    if(sortBy!=='dueDate'){const sortLabels={'polStatusChange':'Sort: Policy Status Changed','billStatusChange':'Sort: Billing Status Changed'};tags.push({type:'sort',label:`🔃 ${sortLabels[sortBy]||sortBy}`});}
     if(assigneeF){
         const assigneeName=document.getElementById('fAssignee').options[document.getElementById('fAssignee').selectedIndex].text;
         tags.push({type:'assignee',label:`Assignee: ${assigneeName}`});
@@ -820,7 +864,7 @@ function render(){
         
         const effCell=`<td class="date-cell">${effDate?fmtShort(effDate):'-'}</td>`;
         const premiumCell=`<td class="premium-cell">${premiumHtml}</td>`;
-        const btnCell=`<td><button class="action-btn" onclick="openPanel('${p.id}')" title="View Details">📋</button></td>`;
+        const btnCell=`<td class="btn-cell"><button class="action-btn" onclick="openPanel('${p.id}')" title="View Details">📋</button></td>`;
         
         if(isBillingTab){
             return `<tr>${policyCell}${amsCell}${dueCell}${statusCell}${billStatusCell}${assigneeCell}${effCell}${premiumCell}${btnCell}</tr>`;
@@ -873,6 +917,8 @@ function toggleStatus(id,isBilling,el){
     document.body.appendChild(dd);
 }
 
+function changeSortBy(val){sortBy=val;filter();updateActiveFilters();}
+
 async function setStatus(id,status,isBilling){
     document.querySelectorAll('.status-dd').forEach(d=>d.remove());
     try{
@@ -896,7 +942,8 @@ async function setStatus(id,status,isBilling){
         await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items/${id}/fields`,{method:'PATCH',body:JSON.stringify(field)});
         const p=policies.find(x=>x.id===id);
         if(p){
-            if(isBilling)p.BillStatus=status;else p.Status=status;
+            if(isBilling){p.BillStatus=status;localStorage.setItem('pm_statusChange_'+id+'_bill',Date.now());}
+            else{p.Status=status;localStorage.setItem('pm_statusChange_'+id+'_pol',Date.now());}
             if(shouldArchive)p.Archived=true;
         }
         toast(shouldArchive?'Status updated & Archived':'Status updated','ok');
@@ -1030,6 +1077,7 @@ function switchTab(t,preserveStatFilter){tab=t;if(!preserveStatFilter)statFilter
 function filterStat(stat){
     statFilter=stat;
     document.getElementById('fStatus').value='';
+    document.getElementById('fBillStatus').value='';
     document.getElementById('fAssignee').value='';
     document.getElementById('fType').value='';
     document.getElementById('fBizType').value='';
@@ -1155,6 +1203,9 @@ async function save(){
         
         if(selected){
             await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items/${selected.id}/fields`,{method:'PATCH',body:JSON.stringify(fields)});
+            // Track status change timestamps if status changed
+            if(fields.RenewalStatus!==selected.Status)localStorage.setItem('pm_statusChange_'+selected.id+'_pol',Date.now());
+            if(fields.BillingStatus!==selected.BillStatus)localStorage.setItem('pm_statusChange_'+selected.id+'_bill',Date.now());
             Object.assign(selected,{Title:fields.Title,PolicyNumber:fields.PolicyNumber,Carrier:fields.Carrier,PolicyType:fields.PolicyType,BizType:fields.BusinessWithAgency,TransType:fields.TransactionType,EffDate:fields.EffectiveDate,ExpDate:fields.ExpirationDate,Status:fields.RenewalStatus,BillStatus:fields.BillingStatus,ExpCost:fields.ExpiringTotalCost,RenCost:fields.RenewalTotalCost,DollarChg:null,PctChg:null,Notes:fields[F_NOTES],IntNotes:fields.InternalNotes,Archived:fields.Archived,AssignedId:assignId||null,AssignedName:document.getElementById('pAssignName').value||null});
         }else{
             const r=await graph(`/sites/${CONFIG.siteHost},${CONFIG.siteId}/lists/${CONFIG.listId}/items`,{method:'POST',body:JSON.stringify({fields})});
